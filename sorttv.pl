@@ -50,9 +50,9 @@ use Fcntl ':flock';
 use Getopt::Long;
 use Getopt::Long qw(GetOptionsFromString);
 
+# Global config variables
 my $man = my $help = 0;
 my ($sortdir, $tvdir, $nonepisodedir, $xbmcwebserver, $matchtype, $musicdir);
-my ($showname, $series, $episode, $pureshowname) = "";
 my ($newshows, $new, $log);
 my @musicext = ("aac","aif","iff","m3u","mid","midi","mp3","mpa","ra","ram","wave","wav","wma","ogg","oga","ogx","spx","flac","m4a", "pls");
 my ( @whitelist, @blacklist, @sizerange);
@@ -74,19 +74,7 @@ my $tvdb;
 my $forceeptitle = ""; # HACK for limitation in TVDB API module
 
 my @optionlist = (
-	"non-episode-dir|ne=s" =>
-		sub {
-			$nonepisodedir = $_[1];
-			if(-e $nonepisodedir) {
-				# append a trailing / if it's not there
-				$nonepisodedir .= '/' if($nonepisodedir !~ /\/$/);
-			} else {
-				out("warn", "WARN: Non-episode directory does not exist ($nonepisodedir)\n");
-			}
-			if($^O =~ /MSWin/ && $fetchimages eq "TRUE") {
-				out("warn", "WARN: The Windows version of the TVDB API module does not support image downloads.\nRECOMMENDATION: edit your config file to disable this feature.\n");
-			}
-		},
+	"non-episode-dir|ne=s" => sub { set_directory($_[1], \$nonepisodedir); },
 	"xbmc-web-server|xs=s" => \$xbmcwebserver,
 	"match-type|ms=s" => \$matchtype,
 	"flatten-non-eps|fne=s" => \$flattennonepisodefiles,
@@ -159,108 +147,102 @@ my @optionlist = (
 		sub {
 			get_config_from_file($_[1]);
 		},
-	"directory-to-sort|sort=s" => 
-		sub {
-			my $sortd = $_[1];
-			# use Unix slashes
-			$sortd =~ s/\\/\//g;
-			if(-e $sortd) {
-				$sortdir = $sortd;
-				# append a trailing / if it's not there
-				$sortdir .= '/' if($sortdir !~ /\/$/);
-			} else {
-				out("warn", "WARN: Directory to sort does not exist ($1)\n");
-			}
-		},
+	"directory-to-sort|sort=s" => sub { set_directory($_[1], \$sortdir); },
 	"directory-to-sort-into|sortto=s" => 
 		sub {
-			my $sortt = $_[1];
-			# use Unix slashes
-			$sortt =~ s/\\/\//g;
-			if($sortt eq "KEEP_IN_SAME_DIRECTORIES") {
+			if($_[1] eq "KEEP_IN_SAME_DIRECTORIES") {
 				$nonepisodedir = "";
+				$musicdir = "";
 				$tvdir = "KEEP_IN_SAME_DIRECTORIES";
-			} elsif(-e $sortt) {
-				$tvdir = $sortt;
-				# append a trailing / if it's not there
-				$tvdir .= '/' if($tvdir !~ /\/$/);
 			} else {
-				out("warn", "WARN: Directory to sort into does not exist ($1)\n");
+				set_directory($_[1], \$tvdir);
 			}
 		},
-	"sort-music-to|music=s" => 
-		sub {
-			if(-e $_[1]) {
-				$musicdir = $_[1];
-				# append a trailing / if it's not there
-				$musicdir .= '/' if($musicdir !~ /\/$/);
-			} else {
-				out("warn", "WARN: music directory does not exist ($_[1])\n");
-			}
-		},
+	"sort-music-to|music=s" => sub { set_directory($_[1], \$musicdir); },
 	"music-extension|me=s" => \@musicext,
 	"h|help|?" => \$help, man => \$man
 );
 
-out("std", "SortTV\n", "~" x 6,"\n");
+# current episode being sorted
+my ($showname, $series, $episode, $pureshowname) = "";
 
-# ensure only one copy running at a time
-if(open SELF, "< $0") {
-	flock SELF, LOCK_EX | LOCK_NB  or die "SortTV is already running, exiting.\n";
-}
+{ # Main bare block
 
-get_config_from_file("$scriptpath/sorttv.conf");
+	out("std", "SortTV\n", "~" x 6,"\n");
 
-# we declare all the possible options through command line
-# each option can have multiple variables (|) and can be used like
-# "--opt" or "--opt=value" or "opt=value" or "opt value" or "-opt value" etc
-GetOptions(@optionlist);
+	# ensure only one copy running at a time
+	if(open SELF, "< $0") {
+		flock SELF, LOCK_EX | LOCK_NB  or die "SortTV is already running, exiting.\n";
+	}
 
-# we stop the script and show the help if help or man option was used
-showhelp() if $help or $man;
+	get_config_from_file("$scriptpath/sorttv.conf");
 
-if(!defined($sortdir) || !defined($tvdir)) {
-	out("warn", "Incorrect usage or configuration (missing sort or sort-to directories)\n");
-	out("warn", "run 'perl sorttv.pl --help' for more information about how to use SortTV");
+	# we declare all the possible options through command line
+	# each option can have multiple variables (|) and can be used like
+	# "--opt" or "--opt=value" or "opt=value" or "opt value" or "-opt value" etc
+	GetOptions(@optionlist);
+
+	# we stop the script and show the help if help or man option was used
+	showhelp() if $help or $man;
+
+	if(!defined($sortdir) || !defined($tvdir)) {
+		out("warn", "Incorrect usage or configuration (missing sort or sort-to directories)\n");
+		out("warn", "run 'perl sorttv.pl --help' for more information about how to use SortTV");
+		exit;
+	}
+
+	# if uses thetvdb, set it up
+	if($renameformat =~ /\[EP_NAME\d]/i || $fetchimages ne "FALSE" 
+	|| $lookupseasonep ne "FALSE" || $lookupseasonep ne "FALSE") {
+		my $TVDBAPIKEY = "FDDBDB916D936956";
+		$tvdb = TVDB::API::new($TVDBAPIKEY);
+
+		$tvdb->setLang($tvdblanguage);
+		my $hashref = $tvdb->getAvailableMirrors();
+		$tvdb->setMirrors($hashref);
+		$tvdb->chooseMirrors();
+		unless (-e "$scriptpath/.cache" || mkdir "$scriptpath/.cache") {
+			out("warn", "WARN: Could not create cache dir: $scriptpath/cache $!\n");
+			exit;
+		}
+		$tvdb->setCacheDB("$scriptpath/.cache/.tvdb.db");
+		$tvdb->setUserAgent("SortTV");
+		$tvdb->setBannerPath("$scriptpath/.cache/");
+	}
+
+	$log = FileHandle->new("$logfile", "a") or out("warn", "WARN: Could not open log file $logfile: $!\n") if $logfile;
+
+	display_info();
+
+	sort_directory($sortdir);
+
+	if($xbmcwebserver && $newshows) {
+		sleep(4);
+		# update xbmc video library
+		get "http://$xbmcwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(updatelibrary(video))";
+		# notification of update
+		get "http://$xbmcwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(,NEW EPISODES NOW AVAILABLE TO WATCH\n$newshows, 7000))";
+	}
+
+	$log->close if(defined $log);
 	exit;
 }
 
-# if uses thetvdb, set it up
-if($renameformat =~ /\[EP_NAME\d]/i || $fetchimages ne "FALSE" 
-  || $lookupseasonep ne "FALSE" || $lookupseasonep ne "FALSE") {
-	my $TVDBAPIKEY = "FDDBDB916D936956";
-	$tvdb = TVDB::API::new($TVDBAPIKEY);
-
-	$tvdb->setLang($tvdblanguage);
-	my $hashref = $tvdb->getAvailableMirrors();
-	$tvdb->setMirrors($hashref);
-	$tvdb->chooseMirrors();
-	unless (-e "$scriptpath/.cache" || mkdir "$scriptpath/.cache") {
-		out("warn", "WARN: Could not create cache dir: $scriptpath/cache $!\n");
-		exit;
+# used to check that a dir exists, then set the corresponding variable
+sub set_directory {
+	my ($dir, $dir_variable) = @_;
+	# use Unix slashes
+	$$dir_variable =~ s/\\/\//g;
+	if(-e $dir) {
+		$$dir_variable = $dir;
+		# append a trailing / if it's not there
+		$$dir_variable .= '/' if($$dir_variable !~ /\/$/);
+		print "dir_variable = $$dir_variable\n";
+	} else {
+		out("warn", "WARN: directory does not exist ($dir)\n");
 	}
-	$tvdb->setCacheDB("$scriptpath/.cache/.tvdb.db");
-	$tvdb->setUserAgent("SortTV");
-	$tvdb->setBannerPath("$scriptpath/.cache/");
+		print "AAAdir_variable = $$dir_variable\n";
 }
-
-$log = FileHandle->new("$logfile", "a") or out("warn", "WARN: Could not open log file $logfile: $!\n") if $logfile;
-
-display_info();
-
-sort_directory($sortdir);
-
-if($xbmcwebserver && $newshows) {
-	sleep(4);
-	# update xbmc video library
-	get "http://$xbmcwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(updatelibrary(video))";
-	# notification of update
-	get "http://$xbmcwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(,NEW EPISODES NOW AVAILABLE TO WATCH\n$newshows, 7000))";
-}
-
-$log->close if(defined $log);
-exit;
-
 
 sub sort_directory {
 	my ($sortd) = @_;
