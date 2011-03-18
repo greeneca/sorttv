@@ -421,16 +421,16 @@ OPTIONS:
 	A directory containing files to sort
 	For example, set this to where completed downloads are stored
 
---directory-to-sort-into:dir
+--tv-directory:dir
 	Where to sort episodes into (dir that will contain dirs for each show)
 	This directory will contain the structure (Show)/(Seasons)/(episodes)
 	Alternatively set this to "KEEP_IN_SAME_DIRECTORIES" for a recursive renaming of files in directory-to-sort
 
---sort-music-to:dir
+--music-directory:dir
 	Where to sort music into
 	If not specified, music is not moved
 
---non-episode-dir:dir
+--misc-directory:dir
 	Where to put things that are not episodes etc
 	If this is supplied then files and directories that SortTV does not believe are episodes will be moved here
 	If not specified, non-episodes are not moved
