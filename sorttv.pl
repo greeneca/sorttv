@@ -74,7 +74,7 @@ my $tvdb;
 my $forceeptitle = ""; # HACK for limitation in TVDB API module
 
 my @optionlist = (
-	"non-episode-dir|ne=s" => sub { set_directory($_[1], \$nonepisodedir); },
+	"misc-dir|misc=s" => sub { set_directory($_[1], \$nonepisodedir); },
 	"xbmc-web-server|xs=s" => \$xbmcwebserver,
 	"match-type|ms=s" => \$matchtype,
 	"flatten-non-eps|fne=s" => \$flattennonepisodefiles,
@@ -148,7 +148,7 @@ my @optionlist = (
 			get_config_from_file($_[1]);
 		},
 	"directory-to-sort|sort=s" => sub { set_directory($_[1], \$sortdir); },
-	"directory-to-sort-into|sortto=s" => 
+	"tv-directory|tvdir=s" => 
 		sub {
 			if($_[1] eq "KEEP_IN_SAME_DIRECTORIES") {
 				$nonepisodedir = "";
@@ -158,7 +158,7 @@ my @optionlist = (
 				set_directory($_[1], \$tvdir);
 			}
 		},
-	"sort-music-to|music=s" => sub { set_directory($_[1], \$musicdir); },
+	"music-directory|music=s" => sub { set_directory($_[1], \$musicdir); },
 	"music-extension|me=s" => \@musicext,
 	"h|help|?" => \$help, man => \$man
 );
@@ -232,16 +232,14 @@ my ($showname, $series, $episode, $pureshowname) = "";
 sub set_directory {
 	my ($dir, $dir_variable) = @_;
 	# use Unix slashes
-	$$dir_variable =~ s/\\/\//g;
+	$dir =~ s/\\/\//g;
 	if(-e $dir) {
 		$$dir_variable = $dir;
 		# append a trailing / if it's not there
 		$$dir_variable .= '/' if($$dir_variable !~ /\/$/);
-		print "dir_variable = $$dir_variable\n";
 	} else {
 		out("warn", "WARN: directory does not exist ($dir)\n");
 	}
-		print "AAAdir_variable = $$dir_variable\n";
 }
 
 sub sort_directory {
