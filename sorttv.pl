@@ -395,10 +395,8 @@ sub get_config_from_file {
 			$in =~ s/\\/\//g;
 			if($in =~ /^\s*#/ || $in =~ /^\s*$/) {
 				# ignores comments and whitespace
-			} elsif($in =~ /([^:]+?):(.+)/) {   
-				GetOptionsFromString("--$1=\"$2\"", @optionlist);
 			} else {
-				GetOptionsFromString("--$in", @optionlist);
+				GetOptionsFromString("'--$in'", @optionlist);
 			}
 		}
 		close (IN);
@@ -417,68 +415,68 @@ By default SortTV tries to read the configuration from sorttv.conf
 You can overwrite any config options with commandline arguments, which match the format of the config file (except that each argument starts with "--")
 
 OPTIONS:
---directory-to-sort:dir
+--directory-to-sort=dir
 	A directory containing files to sort
 	For example, set this to where completed downloads are stored
 
---tv-directory:dir
+--tv-directory=dir
 	Where to sort episodes into (dir that will contain dirs for each show)
 	This directory will contain the structure (Show)/(Seasons)/(episodes)
 	Alternatively set this to "KEEP_IN_SAME_DIRECTORIES" for a recursive renaming of files in directory-to-sort
 
---music-directory:dir
+--music-directory=dir
 	Where to sort music into
 	If not specified, music is not moved
 
---misc-directory:dir
+--misc-directory=dir
 	Where to put things that are not episodes etc
 	If this is supplied then files and directories that SortTV does not believe are episodes will be moved here
 	If not specified, non-episodes are not moved
 
---whitelist:pattern
+--whitelist=pattern
 	Only copy if the file matches one of these patterns
 	Uses shell-like simple pattern matches (eg *.avi)
 	This argument can be repeated to add more rules
 
---blacklist:pattern
+--blacklist=pattern
 	Don't copy if the file matches one of these patterns
 	Uses shell-like simple pattern matches (eg *.avi)
 	This argument can be repeated to add more rules
 
---filesize-range:pattern
+--filesize-range=pattern
 	Only copy files which fall within these filesize ranges.
 	Examples for the pattern include 345MB-355MB or 1.05GB-1.15GB
 
---sort-only-older-than-days:[DAYS]
+--sort-only-older-than-days=[DAYS]
 	Sort only files or directories that are older than this number of days.  
 	If not specified or zero, sort everything.
 
---xbmc-web-server:host:port
+--xbmc-web-server=host:port
 	host:port for xbmc webserver, to automatically update library when new episodes arrive
 	Remember to enable the webserver within xbmc, and "set the content" of your TV directory in xbmc.
 	If not specified, xbmc is not updated
 
---log-file:filepath
+--log-file=filepath
 	Log to this file
 	If not specified, output goes to sorttv.log in the script directory
 
---verbose:[TRUE|FALSE]
+--verbose
 	Output verbosity. Set to TRUE to show messages describing the decision making process.
 	If not specified, FALSE
 
---read-config-file:filepath
+--read-config-file=filepath
 	Secondary config file, overwrites settings loaded so far
 	If not specified, only the default config file is loaded (sorttv.conf)
 
---fetch-show-title:[TRUE|FALSE]
+--fetch-show-title=[TRUE|FALSE]
 	Fetch show titles from thetvdb.com (for proper formatting)
 	If not specified, TRUE
 
---rename-episodes:[TRUE|FALSE]
+--rename-episodes=[TRUE|FALSE]
 	Rename episodes to a new format when moving
 	If not specified, FALSE
 
---rename-format:{formatstring}
+--rename-format={formatstring}
 	the format to use if renaming to a new format (as specified above)
 	Hint: including the Episode Title as part of the name slows the process down a bit since titles are retrieved from thetvdb.com
 	The formatstring can be made up of:
@@ -491,30 +489,30 @@ OPTIONS:
 	If not specified the format is "[SHOW_NAME] - [EP1][EP_NAME1]"
 	For example:
 		for "My Show S01E01 - Episode Title" (this is the default)
-		--rename-format:[SHOW_NAME] - [EP1][EP_NAME1]
+		--rename-format=[SHOW_NAME] - [EP1][EP_NAME1]
 		for "My Show.S01E01.Episode Title"
-		--rename-format:[SHOW_NAME].[EP1][EP_NAME2]
+		--rename-format=[SHOW_NAME].[EP1][EP_NAME2]
 
---use-dots-instead-of-spaces:[TRUE|FALSE]
+--use-dots-instead-of-spaces=[TRUE|FALSE]
 	Renames episodes to replace spaces with dots
 	If not specified, FALSE
 
---season-title:string
+--season-title=string
 	Season title
 	Note: if you want a space it needs to be included
 	(eg "Season " -> "Season 1",  "Series "->"Series 1", "Season."->"Season.1")
 	If not specified, "Season "
 
---season-double-digits:[TRUE|FALSE]
+--season-double-digits=[TRUE|FALSE]
 	Season format padded to double digits (eg "Season 01" rather than "Season 1")
 	If not specified, FALSE
 
---match-type:[NORMAL|LIBERAL]
+--match-type=[NORMAL|LIBERAL]
 	Match type. 
 	LIBERAL assumes all files are episodes and tries to extract season and episode number any way possible.
 	If not specified, NORMAL
 
---match-files-based-on-tvdb-lookups:[TRUE|FALSE]
+--match-files-based-on-tvdb-lookups=[TRUE|FALSE]
 	Attempt to sort files that are named after the episode title or air date.
 	For example, "My show - My episode title.avi" or "My show - 2010-12-12.avi"
 	 could become "My Show - S01E01 - My episode title.avi"
@@ -522,80 +520,80 @@ OPTIONS:
 	Since this involves downloading the list of episodes from the Internet, this will cause a slower sort.
 	If not specified, TRUE
 
---sort-by:[MOVE|COPY|MOVE-AND-LEAVE-SYMLINK-BEHIND|LEAVE-AND-PLACE-SYMLINK]
+--sort-by=[MOVE|COPY|MOVE-AND-LEAVE-SYMLINK-BEHIND|LEAVE-AND-PLACE-SYMLINK]
 	Sort by moving or copying the file. If the file already exists because it was already copied it is silently skipped.
 	The MOVE-AND-LEAVE-SYMLINK-BEHIND option may be handy if you want to continue to seed after sorting, this leaves a symlink in place of the newly moved file.
 	PLACE-SYMLINK does not move the original file, but places a symlink in the sort-to directory (probably not what you want)
 	If not specified, MOVE
 
---treat-directories:[AS_FILES_TO_SORT|RECURSIVELY_SORT_CONTENTS|IGNORE]
+--treat-directories=[AS_FILES_TO_SORT|RECURSIVELY_SORT_CONTENTS|IGNORE]
 	How to treat directories. 
 	AS_FILES_TO_SORT - sorts directories, moving entire directories that represents an episode, also detects and moves directories of entire seasons
 	RECURSIVELY_SORT_CONTENTS - doesn't move directories, just their contents, including subdirectories
 	IGNORE - ignores directories
 	If not specified, RECURSIVELY_SORT_CONTENTS
 	
---require-show-directories-already-exist:[TRUE|FALSE]
+--require-show-directories-already-exist=[TRUE|FALSE]
 	Only sort into show directories that already exist
 	This may be helpful if you have multiple destination directories. Just set up all the other details in the conf file, 
 	and specify the destination directory when invoking the script. Only episodes that match existing directories in the destination will be moved.
 	If this is false, then new directories are created for shows that dont have a directory.
 	If not specified, FALSE
 	
---remove-symlinks:[TRUE|FALSE]
+--remove-symlinks=[TRUE|FALSE]
 	Deletes symlinks from the directory to sort while sorting.
-	This may be helpful if you want to remove all the symlinks you previously left behind using --sort-by:MOVE-AND-LEAVE-SYMLINK-BEHIND
-	You could schedule "perl sorttv.pl --remove-symlinks:TRUE" to remove these once a week/month
-	If this option is enabled and used at the same time as --sort-by:MOVE-AND-LEAVE-SYMLINK-BEHIND, 
+	This may be helpful if you want to remove all the symlinks you previously left behind using --sort-by=MOVE-AND-LEAVE-SYMLINK-BEHIND
+	You could schedule "perl sorttv.pl --remove-symlinks=TRUE" to remove these once a week/month
+	If this option is enabled and used at the same time as --sort-by=MOVE-AND-LEAVE-SYMLINK-BEHIND, 
 	 then only the previous links will be removed, and new ones may also be created
 	If not specified, FALSE
 
---show-name-substitute:NAME1-->NAME2
+--show-name-substitute=NAME1-->NAME2
 	Substitutes names equal to NAME1 for NAME2
 	This argument can be repeated to add multiple rules for substitution
 
---tvdb-id-substitute:NAME1-->TVDB ID
+--tvdb-id-substitute=NAME1-->TVDB ID
 	Substitutes names equal to NAME1 for TVDB ID for lookups
 	This argument can be repeated to add multiple rules for substitution
 
---music-extension:extension
+--music-extension=extension
 	Define additional extensions for music files (SortTV knows a lot already)
 	This argument can be repeated to add multiple additional extensions
 
---force-windows-compatible-filenames:[TRUE|FALSE]
+--force-windows-compatible-filenames=[TRUE|FALSE]
 	Forces MSWindows compatible file names, even when run on other platforms such as Linux
 	This may be helpful if you are writing to a Windows share from a Linux system
 	If not specified, TRUE
 
---lookup-language:[en|...]
+--lookup-language=[en|...]
 	Set language for thetvdb lookups, this effects episode titles etc
 	Valid values include: it, zh, es, hu, nl, pl, sl, da, de, el, he, sv, eng, fi, no, fr, ru, cs, en, ja, hr, tr, ko, pt
 	If not specified, en (English)
 
---flatten-non-eps:[TRUE|FALSE]
+--flatten-non-eps=[TRUE|FALSE]
 	Should non-episode files loose their directory structure?
 	This option only has an effect if a non-episode directory was specified.
 	If set to TRUE, they will be renamed after directory they were in.
 	Otherwise they keep their directory structure in the new non-episode-directory location.
 	If not specified, FALSE
 
---fetch-images:[NEW_SHOWS|FALSE]
+--fetch-images=[NEW_SHOWS|FALSE]
 	Download images for shows, seasons, and episodes from thetvdb
 	Downloaded images are copied into the sort-to (destination) directory.
 	NEW_SHOWS - When new shows, seasons, or episodes are created the associated images are downloaded
 	FALSE - No images are downloaded
 	if not specified, NEW_SHOWS
 
---images-format:POSTER
+--images-format=POSTER
 	Sets the image format to use, poster or banner.
 	POSTER/BANNER
 	if not specified, POSTER
 
---if-file-exists:[SKIP|OVERWRITE]
+--if-file-exists=[SKIP|OVERWRITE]
 	What to do if a file already exists in the destination
 	If not specified, SKIP
 
---extract-compressed-before-sorting:[TRUE|FALSE]
+--extract-compressed-before-sorting=[TRUE|FALSE]
 	Extracts the contents of archives (.zip, .rar) into the directory-to-sort while sorting
 	If "rar" and "unzip" programs are available they are used.
 	If not specified, TRUE
@@ -616,13 +614,13 @@ The directory-to-sort and directory-to-sort-to can be supplied directly:
 To sort a Downloads directory contents into a TV directory
 	perl sorttv.pl /home/me/Downloads /home/me/Videos/TV
 Alternatively:
-	perl sorttv.pl --directory-to-sort:/home/me/Downloads --directory-to-sort-into:/home/me/Videos/TV
+	perl sorttv.pl --directory-to-sort=/home/me/Downloads --directory-to-sort-into=/home/me/Videos/TV
 
 To move non-episode files in a separate directory:
-	perl sorttv.pl --directory-to-sort:/home/me/Downloads --directory-to-sort-into:/home/me/Videos/TV --non-episode-dir:/home/me/Videos/Non-episodes
+	perl sorttv.pl --directory-to-sort=/home/me/Downloads --directory-to-sort-into=/home/me/Videos/TV --non-episode-dir=/home/me/Videos/Non-episodes
 
 To integrate with xbmc (notification and automatic library update):
-	perl sorttv.pl --directory-to-sort:/home/me/Downloads --directory-to-sort-into:/home/me/Videos/TV --xbmc-webserver:localhost:8080
+	perl sorttv.pl --directory-to-sort=/home/me/Downloads --directory-to-sort-into=/home/me/Videos/TV --xbmc-webserver=localhost:8080
 
 And so on...
 
