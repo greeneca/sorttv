@@ -53,7 +53,7 @@ use IO::Socket;
 
 # Global config variables
 my $man = my $help = 0;
-my ($sortdir, $tvdir, $nonepisodedir, $musicdir, $matchtype);
+my ($sortdir, $tvdir, $miscdir, $musicdir, $matchtype);
 my ($xbmcoldwebserver, $xbmcaddress);
 my ($newshows, $new, $log);
 my @musicext = ("aac","aif","iff","m3u","mid","midi","mp3","mpa","ra","ram","wave","wav","wma","ogg","oga","ogx","spx","flac","m4a", "pls");
@@ -63,7 +63,7 @@ my $REDO_FILE = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookup
 my $usedots = my $rename = my $verbose = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = "FALSE";
 my $seasontitle = "Season ";
 my $sortby = "MOVE";
-my $sortolderthandays = 0;
+my $sortolderthandays = my $poll = 0;
 my $ifexists = "SKIP";
 my $renameformat = "[SHOW_NAME] - [EP1][EP_NAME1]";
 my $treatdir = "RECURSIVELY_SORT_CONTENTS";
@@ -76,7 +76,7 @@ my $tvdb;
 my $forceeptitle = ""; # HACK for limitation in TVDB API module
 
 my @optionlist = (
-	"misc-dir|non-episode-dir|misc=s" => sub { set_directory($_[1], \$nonepisodedir); },
+	"misc-dir|non-episode-dir|misc=s" => sub { set_directory($_[1], \$miscdir); },
 	"xbmc-old-web-server|xbmc-web-server|xo=s" => \$xbmcoldwebserver,
 	"xbmc-remote-control|xr=s" => \$xbmcaddress,
 	"match-type|ms=s" => \$matchtype,
@@ -123,6 +123,27 @@ my @optionlist = (
 	"use-dots-instead-of-spaces|dots=s" => \$usedots,
 	"sort-by|by=s" => \$sortby,
 	"sort-only-older-than-days|age=i" => \$sortolderthandays,
+	"poll-time|poll=s" =>
+		sub {
+			my $ptime = $_[1];
+			# convert times to seconds
+			if ($ptime =~ /^(.*)(?:secs?|s)$/) {
+				$ptime = $1;
+			} elsif ($ptime =~ /^(.*)(?:mins?|m)$/) {
+				$ptime = $1 * 60;
+			} elsif ($ptime =~ /^(.*)(?:hrs?|hours?|h)$/) {
+				$ptime = $1 * 3600;
+			} elsif ($ptime =~ /^(.*)(?:days?|d)$/) {
+				$ptime = $1 * 86400;
+			} elsif ($ptime =~ /(\d+)/) {
+				out("warn", "WARN: interpreting $ptime as $1 seconds\n");
+				$ptime = $1;
+			} else {
+				out("warn", "WARN: invalid poll time: $ptime. Must be secs, hrs, days etc.\n");
+				$ptime = 0;
+			}
+			$poll = $ptime;
+		},
 	"season-double-digits|sd=s" => \$seasondoubledigit,
 	"match-files-based-on-tvdb-lookups|tlookup=s" => \$lookupseasonep,
 	"season-title|st=s" => \$seasontitle,
@@ -159,7 +180,7 @@ my @optionlist = (
 	"tv-directory|directory-to-sort-into|tvdir=s" => 
 		sub {
 			if($_[1] eq "KEEP_IN_SAME_DIRECTORIES") {
-				$nonepisodedir = "";
+				$miscdir = "";
 				$musicdir = "";
 				$tvdir = "KEEP_IN_SAME_DIRECTORIES";
 			} else {
@@ -220,20 +241,26 @@ my ($showname, $series, $episode, $pureshowname) = "";
 
 	$log = FileHandle->new("$logfile", "a") or out("warn", "WARN: Could not open log file $logfile: $!\n") if $logfile;
 
-	display_info();
+	display_sortdirs();
+	out("std", "Polling every $poll seconds...\n") if $poll;
 
-	sort_directory($sortdir);
+	do {
+		display_time();
+		sort_directory($sortdir);
 
-	if($xbmcoldwebserver && $newshows) {
-		sleep(4);
-		# update xbmc video library
-		get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(updatelibrary(video))";
-		# notification of update
-		get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(,NEW EPISODES NOW AVAILABLE TO WATCH\n$newshows, 7000))";
-	}
-	if($xbmcaddress && $newshows) {
-		update_xbmc();
-	}
+		if($xbmcoldwebserver && $newshows) {
+			sleep(4);
+			# update xbmc video library
+			get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(updatelibrary(video))";
+			# notification of update
+			get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(,NEW EPISODES NOW AVAILABLE TO WATCH\n$newshows, 7000))";
+		}
+		if($xbmcaddress && $newshows) {
+			update_xbmc();
+		}
+
+		sleep($poll);
+	} while ($poll);
 
 	$log->close if(defined $log);
 	exit;
@@ -269,6 +296,14 @@ sub process_args {
 	GetOptions(@optionlist);
 	set_directory($ARGV[0], \$sortdir) if defined $ARGV[0];
 	set_directory($ARGV[1], \$tvdir) if defined $ARGV[1];
+}
+
+# displays an overview of the sorting that is being done
+sub display_sortdirs {
+	out("std", "Sorting from $sortdir\n") if $sortdir;
+	out("std", "Sorting TV episodes into $tvdir\n") if $tvdir;
+	out("std", "Sorting music into $musicdir\n") if $musicdir;
+	out("std", "Sorting everything else into $miscdir\n") if $miscdir;
 }
 
 # used to check that a dir exists, then set the corresponding variable
@@ -402,8 +437,8 @@ sub sort_directory {
 			$nonep = "TRUE";
 		}
 		# move non-episodes
-		if($nonep eq "TRUE" && defined $nonepisodedir && $tvdir ne "KEEP_IN_SAME_DIRECTORIES") {
-			sort_other ("NON-EPISODE", "$nonepisodedir", $file);
+		if($nonep eq "TRUE" && defined $miscdir && $tvdir ne "KEEP_IN_SAME_DIRECTORIES") {
+			sort_other ("NON-EPISODE", "$miscdir", $file);
 		}
 	}
 }
@@ -967,12 +1002,11 @@ sub extract_archives {
 	}
 }
 
-sub display_info {
+sub display_time {
 	my ($second, $minute, $hour, $dayofmonth, $month, $yearoffset) = localtime();
 	my $year = 1900 + $yearoffset;
 	my $thetime = "$hour:$minute:$second, $dayofmonth-$month-$year";
 	out("std", "$thetime\n"); 
-	out("std", "Sorting $sortdir into $tvdir\n"); 
 }
 
 sub rename_episode {
