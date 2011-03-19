@@ -49,10 +49,12 @@ use strict;
 use Fcntl ':flock';
 use Getopt::Long;
 use Getopt::Long qw(GetOptionsFromString);
+use IO::Socket;
 
 # Global config variables
 my $man = my $help = 0;
-my ($sortdir, $tvdir, $nonepisodedir, $xbmcwebserver, $matchtype, $musicdir);
+my ($sortdir, $tvdir, $nonepisodedir, $musicdir, $matchtype);
+my ($xbmcoldwebserver, $xbmcaddress);
 my ($newshows, $new, $log);
 my @musicext = ("aac","aif","iff","m3u","mid","midi","mp3","mpa","ra","ram","wave","wav","wma","ogg","oga","ogx","spx","flac","m4a", "pls");
 my ( @whitelist, @blacklist, @sizerange);
@@ -75,14 +77,15 @@ my $forceeptitle = ""; # HACK for limitation in TVDB API module
 
 my @optionlist = (
 	"misc-dir|misc=s" => sub { set_directory($_[1], \$nonepisodedir); },
-	"xbmc-web-server|xs=s" => \$xbmcwebserver,
+	"xbmc-old-web-server|xo=s" => \$xbmcoldwebserver,
+	"xbmc-remote-control|xr=s" => \$xbmcaddress,
 	"match-type|ms=s" => \$matchtype,
 	"flatten-non-eps|fne=s" => \$flattennonepisodefiles,
 	"treat-directories|td=s" => \$treatdir,
 	"if-file-exists|e=s" => \$ifexists,
 	"extract-compressed-before-sorting|rar=s" => \$extractrar,
-	"show-name-substitute|fne=s" =>
-		sub { 
+	"show-name-substitute=s" =>
+		sub {
 			if($_[1] =~ /(.*)-->(.*)/) {
 				$showrenames{$1} = $2;
 			}
@@ -139,7 +142,8 @@ my @optionlist = (
 		},
 	"no-network|nn" => 
 		sub {
-			$xbmcwebserver = "";
+			$xbmcoldwebserver = "";
+			$xbmcaddress = "";
 			$tvdbrename = $fetchimages = $lookupseasonep = "FALSE";
 			$renameformat =~ s/\[EP_NAME\d\]//;
 		},
@@ -216,16 +220,33 @@ my ($showname, $series, $episode, $pureshowname) = "";
 
 	sort_directory($sortdir);
 
-	if($xbmcwebserver && $newshows) {
+	if($xbmcoldwebserver && $newshows) {
 		sleep(4);
 		# update xbmc video library
-		get "http://$xbmcwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(updatelibrary(video))";
+		get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(updatelibrary(video))";
 		# notification of update
-		get "http://$xbmcwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(,NEW EPISODES NOW AVAILABLE TO WATCH\n$newshows, 7000))";
+		get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(,NEW EPISODES NOW AVAILABLE TO WATCH\n$newshows, 7000))";
+	}
+	if($xbmcaddress && $newshows) {
+		update_xbmc();
 	}
 
 	$log->close if(defined $log);
 	exit;
+}
+
+sub update_xbmc {
+	my $sock = new IO::Socket::INET (
+		PeerAddr => $xbmcaddress,
+		PeerPort => '9090',
+		Proto => 'tcp', 6 );
+	if($sock) {
+		print $sock '{"jsonrpc": "2.0", "method": "VideoLibrary.ScanForContent", "id": 1}
+		\n';
+		close($sock);
+	} else {
+		out("warn", "WARN: Could not connect to xbmc server: $!\n");
+	}
 }
 
 # checks for the old way we specified options, and converts
@@ -704,10 +725,10 @@ sub fixdate {
 sub substitute_name {
 	my ($from) = @_;
 	foreach my $substitute (keys %showrenames){
-        if(fixtitle($from) =~ /^\Q$substitute\E$/i) {
-                return $showrenames{$substitute};
-        }
-    }
+		if(fixtitle($from) =~ /^\Q$substitute\E$/i) {
+			return $showrenames{$substitute};
+		}
+	}
 	# if no matches, returns unchanged
 	return $from;
 }
@@ -726,10 +747,10 @@ sub resolve_show_name {
 sub substitute_tvdb_id {
 	my ($from) = @_;	
 	foreach my $substitute (keys %showtvdbids){
-        if(fixtitle($from) =~ /^\Q$substitute\E$/i) {
-                return $showtvdbids{$substitute};
-        }
-    }
+		if(fixtitle($from) =~ /^\Q$substitute\E$/i) {
+			return $showtvdbids{$substitute};
+		}
+	}
 	# if no matches, returns unchanged
 	return $from;
 }
@@ -1116,7 +1137,8 @@ sub move_an_ep {
 	my($file, $season, $show, $series, $episode) = @_;
 	my $newfilename = filename($file);
 	my $newpath;
-	my $sendxbmcnotifications = $xbmcwebserver;
+	my $sendxbmcnotifications = $xbmcoldwebserver;
+	$sendxbmcnotifications or $sendxbmcnotifications = $xbmcaddress;
 	
 	my $ep1 = sprintf("S%02dE%02d", $series, $episode);
 	if($rename eq "TRUE") {
@@ -1180,12 +1202,14 @@ sub move_an_ep {
 		}
 		if($sendxbmcnotifications) {
 			$new = resolve_show_name($pureshowname) . " $ep1";
-			my $retval = get "http://$xbmcwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(NEW EPISODE, $new, 7000))";
-			if(undef($retval)) {
-				out("warn", "WARN: Could not connect to xbmc webserver.\nRECOMMENDATION: If you do not use this feature you should disable it in the configuration file.\n");
-				$xbmcwebserver = "";
-			}
 			$newshows .= "$new\n";
+			if($sendxbmcnotifications && $xbmcoldwebserver) {
+				my $retval = get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(NEW EPISODE, $new, 7000))";
+				if(undef($retval)) {
+					out("warn", "WARN: Could not connect to xbmc webserver.\nRECOMMENDATION: If you do not use this feature you should disable it in the configuration file.\n");
+					$xbmcoldwebserver = "";
+				}
+			}
 		}
 	}
 }
@@ -1273,10 +1297,12 @@ sub move_series {
 			}
 			# didn't find a matching season, move DIR
 			move_a_season($file, $show, $series);
-			if($xbmcwebserver) {
+			if($xbmcoldwebserver || $xbmcaddress) {
 				$new = "$showname Season $series directory";
-				get "http://$xbmcwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(NEW EPISODE, $new, 7000))";
 				$newshows .= "$new\n";
+				if($xbmcoldwebserver) {
+					get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(NEW EPISODE, $new, 7000))";
+				}
 			}
 			return 0;
 		}
