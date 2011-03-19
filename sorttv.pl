@@ -180,7 +180,7 @@ my ($showname, $series, $episode, $pureshowname) = "";
 	# we declare all the possible options through command line
 	# each option can have multiple variables (|) and can be used like
 	# "--opt" or "--opt=value" or "opt=value" or "opt value" or "-opt value" etc
-	GetOptions(@optionlist);
+	process_args();
 
 	# we stop the script and show the help if help or man option was used
 	showhelp() if $help or $man;
@@ -226,6 +226,24 @@ my ($showname, $series, $episode, $pureshowname) = "";
 
 	$log->close if(defined $log);
 	exit;
+}
+
+# checks for the old way we specified options, and converts
+sub check_for_old_style_options {
+	my @list = @_;
+	foreach (@list) {
+		if($_ =~ /(^[^:= 	]+):(.*)$/) {
+			$_ = "$1=$2";
+		}
+	}
+}
+
+# processes the arguments, checks for old style, calls GetOptions, then uses what is left
+sub process_args {
+	check_for_old_style_options(@ARGV);
+	GetOptions(@optionlist);
+	set_directory($ARGV[0], \$sortdir) if defined $ARGV[0];
+	set_directory($ARGV[1], \$tvdir) if defined $ARGV[1];
 }
 
 # used to check that a dir exists, then set the corresponding variable
@@ -396,6 +414,10 @@ sub get_config_from_file {
 			if($in =~ /^\s*#/ || $in =~ /^\s*$/) {
 				# ignores comments and whitespace
 			} else {
+				# convert from ':' to '=' assignment format
+				if($in =~ /(^[^:= 	]+):(.*)$/) {
+					$in = "$1=$2";
+				}
 				GetOptionsFromString("'--$in'", @optionlist);
 			}
 		}
