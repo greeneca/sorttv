@@ -87,7 +87,9 @@ my @optionlist = (
 	"show-name-substitute=s" =>
 		sub {
 			if($_[1] =~ /(.*)-->(.*)/) {
-				$showrenames{$1} = $2;
+				my ($key, $val) = ($1, $2);
+				$key = fixtitle($key);
+				$showrenames{$key} = $val;
 			}
 		},
 	"whitelist|white=s" =>
@@ -103,7 +105,9 @@ my @optionlist = (
 	"tvdb-id-substitute|tis=s" => 
 		sub { 
 			if($_[1] =~ /(.*)-->(.*)/) {
-				$showtvdbids{$1} = $2;
+				my ($key, $val) = ($1, $2);
+				$key = fixtitle($key);
+				$showtvdbids{$key} = $val;
 			}
 		},
 	"log-file|o=s" => \$logfile,
@@ -724,7 +728,7 @@ sub fixdate {
 # substitutes show names as configured
 sub substitute_name {
 	my ($from) = @_;
-	foreach my $substitute (keys %showrenames){
+	foreach my $substitute (keys %showrenames) {
 		if(fixtitle($from) =~ /^\Q$substitute\E$/i) {
 			return $showrenames{$substitute};
 		}
