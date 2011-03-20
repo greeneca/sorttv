@@ -125,18 +125,28 @@ OPTIONS:
 		Sort only files or directories that are older than this number of days. 
 		If not specified or zero, sorts everything.
 
-	--xbmc-web-server=host:port
-		host:port for xbmc webserver, to automatically update library when new episodes arrive
+	--xbmc-old-web-server=host:port
+		host:port for the xbmc webserver on older versions of xbmc, to automatically update library when new episodes arrive
 		Remember to enable the webserver within xbmc, and "set the content" of your TV directory in xbmc.
 		If not specified, xbmc is not updated
+
+	--xbmc-remote-control=host
+		host for the new xbmc communication, to automatically update library when new episodes arrive
+		You probably want to set this to "localhost"
 
 	--log-file=filepath
 		Log to this file
 		If not specified, output only goes to stdout (the screen)
 
-	--verbose=[TRUE|FALSE]
-		Output verbosity. Set to TRUE to show messages describing the decision making process.
-		If not specified, FALSE
+	--verbose
+		Output verbosity. Set to show messages describing the decision making process.
+		If not specified, it is disabled.
+
+	--polling-time:{X}
+		Tell the script to check for new files to sort every X seconds, minutes, hours, or days
+		You could set the script to start on system startup with polling, rather than using scheduling to start the script.
+		Valid values include "2secs", "2days", "1min", "3hrs", "30s" etc.
+		If not specified, polling is disabled and the script will only sort the directory once.
 
 	--read-config-file=filepath
 		Secondary config file, overwrites settings loaded so far
