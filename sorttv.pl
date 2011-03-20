@@ -284,10 +284,11 @@ sub update_xbmc {
 sub check_for_old_style_options {
 	my @list = @_;
 	foreach (@list) {
-		if($_ =~ /(^[^:= 	]+):(.*)$/) {
+		if($_ =~ /(^[^:= 	]+):(.+)$/) {
 			$_ = "$1=$2";
 		}
 	}
+	@ARGV = @list;
 }
 
 # processes the arguments, checks for old style, calls GetOptions, then uses what is left
@@ -476,7 +477,7 @@ sub get_config_from_file {
 				# ignores comments and whitespace
 			} else {
 				# convert from ':' to '=' assignment format
-				if($in =~ /(^[^:= 	]+):(.*)$/) {
+				if($in =~ /(^[^:= 	]+):(.+)$/) {
 					$in = "$1=$2";
 				}
 				GetOptionsFromString("'--$in'", @optionlist);
