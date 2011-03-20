@@ -714,9 +714,16 @@ sub fixtitle {
 }
 
 # in most cases this is not needed, just cleans up the title slightly
+# some of the tv episode regex grab more than the show title, this cleans that up, also removes dots etc
 sub fixpurename {
 	my ($title) = @_;
+	# removes directories
+	if($title =~ /\/(.+)/) {
+		$title = $1;
+	}
+	# removes season
 	$title =~ s/(?:Season.*|Series.*|\Q$seasontitle\E.*)//ig;
+	# removes dots and special chars
 	$title = remdot($title);
 	# replace any double spaces with one space
 	$title =~ s/\s\s/ /ig;
