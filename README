@@ -98,7 +98,7 @@ OPTIONS:
 		This directory will contain the structure (Show)/(Seasons)/(episodes)
 		Alternatively set this to "KEEP_IN_SAME_DIRECTORIES" for a recursive renaming of files in directory-to-sort
 
-	--music-directory-to=dir
+	--music-directory=dir
 		Where to sort music into
 		If not specified, music is not moved
 
