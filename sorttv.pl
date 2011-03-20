@@ -76,8 +76,8 @@ my $tvdb;
 my $forceeptitle = ""; # HACK for limitation in TVDB API module
 
 my @optionlist = (
-	"misc-dir|misc=s" => sub { set_directory($_[1], \$nonepisodedir); },
-	"xbmc-old-web-server|xo=s" => \$xbmcoldwebserver,
+	"misc-dir|non-episode-dir|misc=s" => sub { set_directory($_[1], \$nonepisodedir); },
+	"xbmc-old-web-server|xbmc-web-server|xo=s" => \$xbmcoldwebserver,
 	"xbmc-remote-control|xr=s" => \$xbmcaddress,
 	"match-type|ms=s" => \$matchtype,
 	"flatten-non-eps|fne=s" => \$flattennonepisodefiles,
@@ -156,7 +156,7 @@ my @optionlist = (
 			get_config_from_file($_[1]);
 		},
 	"directory-to-sort|sort=s" => sub { set_directory($_[1], \$sortdir); },
-	"tv-directory|tvdir=s" => 
+	"tv-directory|directory-to-sort-into|tvdir=s" => 
 		sub {
 			if($_[1] eq "KEEP_IN_SAME_DIRECTORIES") {
 				$nonepisodedir = "";
