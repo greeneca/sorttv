@@ -283,12 +283,17 @@ OPTIONS:
 		If "rar" and "unzip" programs are available they are used.
 		If not specified, TRUE
 
+	--check-for-updates=[TRUE|FALSE]
+		Check for newer versions of SortTV
+		If not specified, TRUE
+
 	--no-network
 		Disables all the network enabled features such as:
 			Disables notifying xbmc
 			Disables tvdb title formatting
 			Disables fetching images
 			Disables looking up files named "Show - EpTitle.ext"
+			Disables checking for updates
 			Changes rename format (if applicable) to not include episode titles
 
 EXAMPLES:

@@ -59,7 +59,7 @@ my ($newshows, $new, $log);
 my @musicext = ("aac","aif","iff","m3u","mid","midi","mp3","mpa","ra","ram","wave","wav","wma","ogg","oga","ogx","spx","flac","m4a", "pls");
 my ( @whitelist, @blacklist, @sizerange);
 my (%showrenames, %showtvdbids);
-my $REDO_FILE = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = "TRUE";
+my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = "TRUE";
 my $usedots = my $rename = my $verbose = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = "FALSE";
 my $seasontitle = "Season ";
 my $sortby = "MOVE";
@@ -81,6 +81,7 @@ my @optionlist = (
 	"xbmc-remote-control|xr=s" => \$xbmcaddress,
 	"match-type|ms=s" => \$matchtype,
 	"flatten-non-eps|fne=s" => \$flattennonepisodefiles,
+	"check-for-updates|up=s" => \$checkforupdates,
 	"treat-directories|td=s" => \$treatdir,
 	"if-file-exists|e=s" => \$ifexists,
 	"extract-compressed-before-sorting|rar=s" => \$extractrar,
@@ -169,7 +170,7 @@ my @optionlist = (
 		sub {
 			$xbmcoldwebserver = "";
 			$xbmcaddress = "";
-			$tvdbrename = $fetchimages = $lookupseasonep = "FALSE";
+			$tvdbrename = $fetchimages = $lookupseasonep = $checkforupdates = "FALSE";
 			$renameformat =~ s/\[EP_NAME\d\]//;
 		},
 	"read-config-file|conf=s" => 
@@ -203,6 +204,7 @@ my ($showname, $series, $episode, $pureshowname) = "";
 	if(open SELF, "< $0") {
 		flock SELF, LOCK_EX | LOCK_NB  or die "SortTV is already running, exiting.\n";
 	}
+	check_for_updates() if $checkforupdates eq "TRUE";
 
 	get_config_from_file("$scriptpath/sorttv.conf");
 
@@ -240,7 +242,6 @@ my ($showname, $series, $episode, $pureshowname) = "";
 	}
 
 	$log = FileHandle->new("$logfile", "a") or out("warn", "WARN: Could not open log file $logfile: $!\n") if $logfile;
-
 	display_sortdirs();
 	out("std", "Polling every $poll seconds...\n") if $poll;
 
@@ -264,6 +265,25 @@ my ($showname, $series, $episode, $pureshowname) = "";
 
 	$log->close if(defined $log);
 	exit;
+}
+
+# notifies the user if a newer version is available
+# gets the version of the latest release from gitweb, and compares that to the local version
+sub check_for_updates {
+	my ($version, $localmaj, $localmin, $currentversion, $currentmaj, $currentmin);
+	if(open (VER, "$scriptpath/.sorttv.version")) {
+		chomp($version = <VER>);
+	}
+	if($version =~ /(\d+).(\d+)/) {
+		($localmaj, $localmin) = ($1, $2);
+	}
+	$currentversion = get "http://sorttv.git.sourceforge.net/git/gitweb.cgi?p=sorttv/sorttv;a=blob_plain;f=.sorttv.version;hb=HEAD";
+	if($currentversion =~ /(\d+).(\d+)/) {
+		($currentmaj, $currentmin) = ($1, $2);
+	}
+	if($localmaj < $currentmaj || ($localmaj == $currentmaj && $localmin < $currentmin)) {
+		out("std", "UPDATE AVAILABLE: A new version of SortTV is available!\n\tVisit http://sourceforge.net/projects/sorttv/ to get the latest version.\n\tLocal version: $version, latest release: $currentversion\n");
+	}
 }
 
 sub update_xbmc {
@@ -301,10 +321,10 @@ sub process_args {
 
 # displays an overview of the sorting that is being done
 sub display_sortdirs {
-	out("std", "Sorting from $sortdir\n") if $sortdir;
-	out("std", "Sorting TV episodes into $tvdir\n") if $tvdir;
-	out("std", "Sorting music into $musicdir\n") if $musicdir;
-	out("std", "Sorting everything else into $miscdir\n") if $miscdir;
+	out("std", "Sorting:\n\tFrom $sortdir\n") if $sortdir;
+	out("std", "\tTV episodes into $tvdir\n") if $tvdir;
+	out("std", "\tmusic into $musicdir\n") if $musicdir;
+	out("std", "\teverything else into $miscdir\n") if $miscdir;
 }
 
 # used to check that a dir exists, then set the corresponding variable
@@ -690,6 +710,10 @@ OPTIONS:
 --extract-compressed-before-sorting=[TRUE|FALSE]
 	Extracts the contents of archives (.zip, .rar) into the directory-to-sort while sorting
 	If "rar" and "unzip" programs are available they are used.
+	If not specified, TRUE
+
+--check-for-updates=[TRUE|FALSE]
+	Check for newer versions of SortTV
 	If not specified, TRUE
 
 --no-network
