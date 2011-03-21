@@ -149,11 +149,16 @@ my @optionlist = (
 	"match-files-based-on-tvdb-lookups|tlookup=s" => \$lookupseasonep,
 	"season-title|st=s" => \$seasontitle,
 	"verbose|v" => \$verbose,
-	"filesize-range|fsrange=f{2}" =>
+	"filesize-range|fsrange=s" =>
 		sub {
 			# Extract the min & max values, can mix and match postfixes
-			my $minfilesize = $_[1];
-			my $maxfilesize = $_[2];
+			if ($_[1] !~ /(.*)-(.*)/) {
+				out ("warn", "WARN: invalid filesize range format. Must be 125MB-350MB, etc. Received: $_[1]");
+				return;
+			}
+			my $minfilesize = $1;
+			my $maxfilesize = $2;
+
 			$minfilesize =~ s/MB//;
 			$maxfilesize =~ s/MB//;
 			# Fix filesizes passed in to all MB
