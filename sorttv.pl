@@ -976,7 +976,11 @@ sub extract_archives {
 	my @errors = (-1, 32512);
 	foreach my $arfile (bsd_glob($escapedsortd.'*.{rar,zip,7z,gz,bz2}')) {
 		my $dest = filename($sortd) . "/" . $arfile . " (extracted by SortTV)";
-		unless (mkdir($dest) || -e $dest) {
+		if(-e $dest) {
+			out("std", "SKIP: already extracted: $dest\n");
+			next;
+		}
+		unless (mkdir($dest)) {
 			out("warn", "WARN: could not create directory: $dest ($!), extracting to $sortd\n");
 			$dest = $sortd;
 		}
