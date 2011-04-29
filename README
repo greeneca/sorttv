@@ -55,7 +55,7 @@ Edit the sorttv.conf file to the settings you want (at minimum specify the locat
 
 Install the modules the script uses.
 To do so, run this command on Linux:
-sudo cpan File::Copy::Recursive File::Glob LWP::Simple TVDB::API Text::Capitalize
+sudo cpan File::Copy::Recursive File::Glob LWP::Simple TVDB::API Getopt::Long
 On Windows run the same command, without "sudo"
 
 ---
