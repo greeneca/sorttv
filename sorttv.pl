@@ -1285,9 +1285,8 @@ sub move_an_ep {
 	unless($verbose eq "TRUE" || ($sortby ne "COPY" && $sortby ne "PLACE-SYMLINK")) {
 		$sendxbmcnotifications = "";
 	}
-	sort_file($file, $newpath, "EPISODE");
-	# if the episode was moved (or already existed)
-	if(-e $newpath) {
+	if(sort_file($file, $newpath, "EPISODE") eq "TRUE") {
+		# if the episode was moved...
 		if ($fetchimages ne "FALSE") {
 			fetchepisodeimage(resolve_show_name($pureshowname), $show, $series, $season, $episode, $newfilename);
 		}
@@ -1308,24 +1307,29 @@ sub move_an_ep {
 # moves, copies or symlinks the file to the destination
 sub sort_file {
 	my ($file, $newpath, $msg) = @_;
+	# returns whether to display a message
+	my $retval = 'FALSE';
 	if(-e $newpath) {
 		if(filename($file) =~ /repack|proper/i) {
 			# still overwrites if copying, but doesn't output a message unless verbose
 			if($verbose eq "TRUE" || ($sortby ne "COPY" && $sortby ne "PLACE-SYMLINK")) {
 				out("warn", "OVERWRITE: Repack/proper version.\n");
-				out("std", "$sortby: sorting $file to ", $newpath, "\n");
+				out("std", "$sortby $msg: sorting $file --to--> ", $newpath, "\n");
 			} # elsewhere: else $sendxbmcnotifications = ""
+			$retval = 'TRUE';
 		} elsif($ifexists eq "OVERWRITE") {
 			out("warn", "OVERWRITE: Existing file.\n");
-			out("std", "$sortby: sorting $file to ", $newpath, "\n");
+			out("std", "$sortby $msg: sorting $file --to--> ", $newpath, "\n");
+			$retval = 'TRUE';
 		} elsif($ifexists eq "SKIP") {
 			if($verbose eq "TRUE" || ($sortby ne "COPY" && $sortby ne "PLACE-SYMLINK")) {
 				out("warn", "SKIP: File $newpath already exists, skipping.\n");
 			}
-			return;
+			return $retval;
 		}
 	} else {
 		out("std", "$sortby $msg: sorting $file --to--> ", $newpath, "\n");
+		$retval = 'TRUE';
 	}
 	if($sortby eq "MOVE" || $sortby eq "MOVE-AND-LEAVE-SYMLINK-BEHIND") {
 		if(-d $file) {
@@ -1346,7 +1350,7 @@ sub sort_file {
 	if($sortby eq "MOVE-AND-LEAVE-SYMLINK-BEHIND") {
 		symlink($newpath, $file) or out("warn", "File $newpath cannot be symlinked to $file. : $!");
 	}
-
+	return $retval;
 }
 
 sub move_a_season {
