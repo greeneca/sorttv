@@ -1428,7 +1428,7 @@ sub out {
 	my ($type, @msg) = @_;
 	
 	if($type eq "verbose") {
-		return if $verbose ne "TRUE";
+		return if !$verbose;
 		print @msg;
 		print $log @msg if(defined $log);
 	} elsif($type eq "std") {
