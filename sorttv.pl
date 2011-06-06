@@ -1076,7 +1076,7 @@ sub rename_episode {
 
 sub dir_matching_show_name {
 	my ($tvdir, $pureshowname, $showname, $year) = @_;
-	out("verbose", "INFO: trying to move $pureshowname season $series episode $episode year $year\n");
+	out("verbose", "INFO: trying to move $pureshowname season $series episode $episode\n");
 	# try once with a year, then recursively once without
 	foreach my $show (bsd_glob($tvdir.'*')) {
 		# test if it matches a simple version, or a substituted version of the file to move
@@ -1219,7 +1219,7 @@ sub fetchseasonep {
 		} else {
 			my $season = 1;
 			# make sure you know what season to stop at
-			my $maxseasons = $tvdb->getMaxSeason($seriesall->{'SeriesName'});
+			my $maxseasons = $tvdb->getMaxSeason($showtitle);
 			# work through the seasons
 			while($season <= $maxseasons) {
 				my @epid = $tvdb->getSeason($showtitle, $season);
