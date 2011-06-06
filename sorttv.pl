@@ -60,7 +60,7 @@ my ($newshows, $new, $log);
 my @musicext = ("aac","aif","iff","m3u","mid","midi","mp3","mpa","ra","ram","wave","wav","wma","ogg","oga","ogx","spx","flac","m4a", "pls");
 my ( @whitelist, @blacklist, @sizerange);
 my (%showrenames, %showtvdbids);
-my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = "TRUE";
+my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = "TRUE";
 my $usedots = my $rename = my $verbose = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = "FALSE";
 my $seasontitle = "Season ";
 my $sortby = "MOVE";
@@ -148,6 +148,7 @@ my @optionlist = (
 		},
 	"season-double-digits|sd=s" => \$seasondoubledigit,
 	"match-files-based-on-tvdb-lookups|tlookup=s" => \$lookupseasonep,
+	"use-season-directories|sd=s" => \$useseasondirs,
 	"season-title|st=s" => \$seasontitle,
 	"verbose|v" => \$verbose,
 	"filesize-range|fsrange=s" =>
@@ -1142,9 +1143,15 @@ sub move_episode {
 	my $show = dir_matching_show_name($tvdir, $pureshowname, $showname, $year);
 	if($show) {
 		out("verbose", "INFO: found a matching show:\n\t$show\n");
-		my $season = dir_matching_season($show, $series, $pureshowname);
+		my $season;
+		if($useseasondirs eq "TRUE") {
+			$season = dir_matching_season($show, $series, $pureshowname);
+		} else {
+			out("verbose", "INFO: not using a season directory.\n");
+			$season = $show;
+		}
 		if($season) {
-			out("verbose", "INFO: found a matching season:\n\t$season\n");
+			out("verbose", "INFO: found a matching season directory:\n\t$season\n");
 			move_an_ep($file, $season, $show, $series, $episode);
 			return 0;
 		}

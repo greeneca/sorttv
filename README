@@ -181,6 +181,12 @@ OPTIONS:
 		Renames episodes to replace spaces with dots
 		If not specified, FALSE
 
+	--use-season-directories=[TRUE|FALSE]
+		Whether to use directories for seasons 
+		For example, should "Show S1E01.avi" be sorted into "Show/Season 1/" or "Show"
+		If FALSE, all episodes will be put in the one show directory and season images will not be fetched
+		If not specified, TRUE
+
 	--season-title=string
 		Season title
 		Note: if you want a space it needs to be included
