@@ -299,8 +299,7 @@ sub update_xbmc {
 		PeerPort => '9090',
 		Proto => 'tcp', 6 );
 	if($sock) {
-		print $sock '{"jsonrpc": "2.0", "method": "VideoLibrary.ScanForContent", "id": 1}
-		\n';
+		print $sock '{"jsonrpc": "2.0", "method": "VideoLibrary.ScanForContent", "id": 1}\n';
 		close($sock);
 	} else {
 		out("warn", "WARN: Could not connect to xbmc server: $!\n");
