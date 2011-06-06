@@ -200,7 +200,7 @@ my @optionlist = (
 );
 
 # current episode being sorted
-my ($showname, $series, $episode, $pureshowname) = "";
+my ($showname, $year, $series, $episode, $pureshowname) = "";
 
 { # Main bare block
 
@@ -401,7 +401,13 @@ sub sort_directory {
 				$series = $2;
 			}
 			$showname = fixtitle($pureshowname);
-			if(move_series($pureshowname, $showname, $series, $file) eq $REDO_FILE) {
+			# extract year if present, for example "Show (2011)"
+			if($pureshowname =~ /(.*)(?:\.|\s|-|\(|\[)*\(?((?:20|19)\d{2})(?:\)|\])?/) {
+				$year = $2;
+			} else {
+				$year = "";
+			}
+			if(move_series($pureshowname, $showname, $series, $year, $file) eq $REDO_FILE) {
 				redo FILE;
 			}
 		# Regex for tv show episode: S01E01 or 1x1 or 1 x 1 or 101 or [1x1] etc
@@ -423,9 +429,16 @@ sub sort_directory {
 				$series = $2;
 			}
 			$episode = $3;
+			# extract year if present, for example "Show (2011)"
+			if($pureshowname =~ /(.*)(?:\.|\s|-|\(|\[)*\(?((?:20|19)\d{2})(?:\)|\])?/) {
+				$year = $2;
+			} else {
+				$year = "";
+			}
+
 			if($pureshowname ne "") {
 				if($tvdir !~ /^KEEP_IN_SAME_DIRECTORIES/) {
-					if(move_episode($pureshowname, $showname, $series, $episode, $file) eq $REDO_FILE) {
+					if(move_episode($pureshowname, $showname, $series, $episode, $year, $file) eq $REDO_FILE) {
 						redo FILE;
 					}
 				} else {
@@ -451,7 +464,7 @@ sub sort_directory {
 					$series = sprintf("%02d", $series);
 				}
 				if($tvdir !~ /^KEEP_IN_SAME_DIRECTORIES/) {
-					if(move_episode($pureshowname, $showname, $series, $episode, $file) eq $REDO_FILE) {
+					if(move_episode($pureshowname, $showname, $series, $episode, $year, $file) eq $REDO_FILE) {
 						redo FILE;
 					}
 				} else {
@@ -1054,55 +1067,83 @@ sub rename_episode {
 	return 0;
 }
 
-sub move_episode {
-	my ($pureshowname, $showname, $series, $episode, $file) = @_;
-
-	out("verbose", "INFO: trying to move $pureshowname season $series episode $episode\n");
-	SHOW: foreach my $show (bsd_glob($tvdir.'*')) {
+sub dir_matching_show_name {
+	my ($tvdir, $pureshowname, $showname, $year) = @_;
+	out("verbose", "INFO: trying to move $pureshowname season $series episode $episode year $year\n");
+	# try once with a year, then recursively once without
+	foreach my $show (bsd_glob($tvdir.'*')) {
 		# test if it matches a simple version, or a substituted version of the file to move
 		my $subshowname = fixtitle(escape_myfilename(resolve_show_name($pureshowname)));
 		if(fixtitle(filename($show)) =~ /^\Q$showname\E$/i || fixtitle(escape_myfilename(filename($show))) =~ /^\Q$subshowname\E$/i) {
-			out("verbose", "INFO: found a matching show:\n\t$show\n");
-			my $s = $show.'/*';
-			my @g=bsd_glob($show);
-			foreach my $season (bsd_glob($show.'/*')) {
-				if(-d $season.'/' && $season =~ /(?:Season|Series|$seasontitle)?\s?0*(\d+)$/i && $1 == $series) {
-					out("verbose", "INFO: found a matching season:\n\t$season\n");
-					move_an_ep($file, $season, $show, $series, $episode);
-					# next FILE;
-					return 0;
+			# and if a year is included try finding one where year matches the dir
+			if($year) {
+				if ($show =~ /.*(?:\.|\s|-|\(|\[)*\(?((?:20|19)\d{2})(?:\)|\])?$/){
+					my $diryear = $1;
+					if($year == $diryear) {
+						return $show;
+					}
 				}
-			}
-			# didn't find a matching season, make DIR
-			out("std", "INFO: making season directory: $show/$seasontitle$series\n");
-			my $newpath = "$show/$seasontitle$series";
-			if(mkdir($newpath, 0777)) {
-				fetchseasonimages(resolve_show_name($pureshowname), $show, $series, $newpath) if $fetchimages ne "FALSE";
-				redo SHOW; # try again now that the dir exists
 			} else {
-				out("warn", "WARN: Could not create season dir: $!\n");
-				# next FILE;
-				return 0;
+				return $show;
 			}
 		}
 	}
-	if($needshowexist ne "TRUE") {
-		# if we are here then we couldn't find a matching show, make DIR
+
+	# if we are here then we couldn't find a matching show
+	if ($year) {
+		out("std", "INFO: Could not find a show directory for $pureshowname matching the year $year, trying ignoring the year...\n");
+		return dir_matching_show_name($tvdir, $pureshowname, $showname, "");
+	}
+	if($needshowexist ne "TRUE" && !$year) {
+		# we couldn't find a matching show (and we are not looking for year specific), make DIR
 		my $newshowdir = $tvdir .escape_myfilename(resolve_show_name($pureshowname));
 		out("std", "INFO: making show directory: $newshowdir\n");
 		if(mkdir($newshowdir, 0777)) {
 			fetchshowimages(resolve_show_name($pureshowname), $newshowdir) if $fetchimages ne "FALSE";
-			# try again now that the dir exists
-			# redo FILE;
-			return $REDO_FILE;
+			return $newshowdir;
 		} else {
 			out("warn", "WARN: Could not create show dir: $newshowdir:$!\n");
-			# next FILE;
+			return 0;
+		}
+	}
+}
+
+sub dir_matching_season {
+	my ($show, $series, $pureshowname) = @_;
+
+	foreach my $season (bsd_glob($show.'/*')) {
+		if(-d $season.'/' && $season =~ /(?:Season|Series|$seasontitle)?\s?0*(\d+)$/i && $1 == $series) {
+			return $season;
+		}
+	}
+	# didn't find a matching season, make DIR
+	out("std", "INFO: making season directory: $show/$seasontitle$series\n");
+	my $newpath = "$show/$seasontitle$series";
+	if(mkdir($newpath, 0777)) {
+		fetchseasonimages(resolve_show_name($pureshowname), $show, $series, $newpath) if $fetchimages ne "FALSE";
+		return $newpath; # try again now that the dir exists
+	} else {
+		out("warn", "WARN: Could not create season dir: $!\n");
+		return 0;
+	}
+}
+
+# attempts to sort an episode by searching for and possibly creating the dirs in which to place it
+# if a year is included in the show name, trys to find the show&year or warns and trys w/o year
+sub move_episode {
+	my ($pureshowname, $showname, $series, $episode, $year, $file) = @_;
+
+	my $show = dir_matching_show_name($tvdir, $pureshowname, $showname, $year);
+	if($show) {
+		out("verbose", "INFO: found a matching show:\n\t$show\n");
+		my $season = dir_matching_season($show, $series, $pureshowname);
+		if($season) {
+			out("verbose", "INFO: found a matching season:\n\t$season\n");
+			move_an_ep($file, $season, $show, $series, $episode);
 			return 0;
 		}
 	} else {
 		out("verbose", "SKIP: Show directory does not exist: " . $tvdir . escape_myfilename(resolve_show_name($pureshowname))."\n");
-		# next FILE;
 		return 0;
 	}
 }
@@ -1377,49 +1418,25 @@ sub move_a_season {
 
 # move a new Season x directory
 sub move_series {
-	my ($pureshowname, $showname, $series, $file) = @_;
-
-	out("verbose", "INFO: trying to move $pureshowname season $series directory\n");
-	SHOW: foreach my $show (bsd_glob($tvdir.'*')) {
-		if(fixtitle($show) =~ /^\Q$showname\E$/i) {
-			out("verbose", "INFO: found a matching show:\n\t$show\n");
-			my $s = $show.'/*';
-			my @g=bsd_glob($show);
-			foreach my $season (bsd_glob($show.'/*')) {
-				if(-d $season.'/' && $season =~ /(?:Season|Series|$seasontitle)?\s?0*(\d)$/i && $1 == $series) {
-					out("warn", "SKIP: Cannot move season directory: found a matching season already existing:\n\t$season\n");
-					return 0;
-				}
-			}
-			# didn't find a matching season, move DIR
-			move_a_season($file, $show, $series);
-			if($xbmcoldwebserver || $xbmcaddress) {
-				$new = "$showname Season $series directory";
-				$newshows .= "$new\n";
-				if($xbmcoldwebserver) {
-					get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(NEW EPISODE, $new, 7000))";
-				}
-			}
-			return 0;
-		}
-	}
-	if($needshowexist ne "TRUE") {
-		# if we are here then we couldn't find a matching show, make DIR
-		my $newshowdir = $tvdir .escape_myfilename(resolve_show_name($pureshowname));
-		out("std", "INFO: making show directory: $newshowdir\n");
-		if(mkdir($newshowdir, 0777)) {
-			fetchshowimages(resolve_show_name($pureshowname), $newshowdir) if $fetchimages ne "FALSE";
-			# try again now that the dir exists
-			# redo FILE;
-			return $REDO_FILE;
-		} else {
-			out("warn", "WARN: Could not create show dir: $newshowdir:$!\n");
-			# next FILE;
+	my ($pureshowname, $showname, $series, $year, $file) = @_;
+	my $show = dir_matching_show_name($tvdir, $pureshowname, $showname, $year);
+	if($show) {
+		out("verbose", "INFO: found a matching show:\n\t$show\n");
+		my $season = dir_matching_season($show, $series, $pureshowname);
+		if($season) {
+			out("warn", "SKIP: Cannot move season directory: found a matching season already existing:\n\t$season\n");
 			return 0;
 		}
 	} else {
-		out("verbose", "SKIP: Show directory does not exist: " . $tvdir . escape_myfilename(resolve_show_name($pureshowname))."\n");
-		# next FILE;
+		# didn't find a matching season, move DIR
+		move_a_season($file, $show, $series);
+		if($xbmcoldwebserver || $xbmcaddress) {
+			$new = "$showname Season $series directory";
+			$newshows .= "$new\n";
+			if($xbmcoldwebserver) {
+				get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(NEW EPISODE, $new, 7000))";
+			}
+		}
 		return 0;
 	}
 }
