@@ -779,6 +779,7 @@ END
 	exit;
 }
 
+# This subroutine is used to ignore things while looking for a match.
 # replaces ".", "_" and removes "the" and ","
 # removes numbers and spaces
 # removes the dir path
@@ -790,7 +791,12 @@ sub fixtitle {
 	$title =~ s/(.*\/)(.*)/$2/;
 	$title = remdot($title);
 	$title =~ s/\d|\s|\(|\)//ig;
-	return $title;
+	# make sure that didn't remove everything
+	if($title) {
+		return $title;
+	} else {
+		return $_[0];
+	}
 }
 
 # in most cases this is not needed, just cleans up the title slightly
