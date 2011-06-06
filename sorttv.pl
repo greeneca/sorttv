@@ -16,6 +16,7 @@
 # CoinTos - xbmc forum
 # gardz - xbmc forum
 # Patrick Cole - z@amused.net
+# Martin Guillon - farfromrefug
 #
 # Please goto the xbmc forum to discuss SortTV:
 # http://forum.xbmc.org/showthread.php?t=75949
