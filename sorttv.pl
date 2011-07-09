@@ -1217,12 +1217,16 @@ sub fetchseasonep {
 			}
 		} else {
 			my $season = 1;
-			# make sure you know what season to stop at
-			my $maxseasons = $tvdb->getMaxSeason($showtitle);
 			# work through the seasons
-			while($season <= $maxseasons) {
-				my @epid = $tvdb->getSeason($showtitle, $season);
+			while(1) {
+				my @epid;
 				my $spot = 1;
+				eval {
+					@epid = $tvdb->getSeason($showtitle, $season);
+					1;
+				} or do {
+					last; # if no more seasons, exit loop
+				};
 				# process each episode id
 				while($epid[0]) {
 					if(defined($epid[0][$spot])) {
@@ -1294,23 +1298,33 @@ sub move_an_ep {
 		}
 		if($renameformat =~ /\[EP_NAME(\d)]/i) {
 			out("verbose", "INFO: Fetching episode title for ", resolve_show_name($pureshowname), " Season $series Episode $episode.\n");
-			my $name;
+			my $name = "";
 			# HACK - setConf maxEpisode apparently doesn't register, temporary fix
 			if(defined($forceeptitle)&& $forceeptitle ne "") {
 				# set it if you had to force a ep title
 				$name = $forceeptitle;
 				# forget so we can be fresh for the next file
-				$forceeptitle = "";	
+				$forceeptitle = "";
 			} else {
-				$name = $tvdb->getEpisodeName(substitute_tvdb_id(resolve_show_name($pureshowname)), $series, $episode);
+				my $showtitle = substitute_tvdb_id(resolve_show_name($pureshowname));
+				# if that episode exists
+				eval { # try
+					$name = $tvdb->getEpisodeName($showtitle, $series, $episode);
+				}
 			}
 			my $format = $1;
 			if($name) {
-				$name =~ s/\s+$//;		
+				$name =~ s/\s+$//;
 				# support for utf8 characters in episode names
-				require Encode;
-				$eptitle = " - " . Encode::decode_utf8($name) if $format == 1;
-				$eptitle = "." . Encode::decode_utf8($name) if $format == 2;
+				eval { # try
+					require Encode;
+					$eptitle = " - " . Encode::decode_utf8( $name ) if $format == 1;
+					$eptitle = "." . Encode::decode_utf8( $name ) if $format == 2;
+					1;
+				} or do { # catch
+					out("warn", "WARN: Could not encode episode title.\n");
+				};
+
 			} else {
 				out("warn", "WARN: Could not get episode title for ", resolve_show_name($pureshowname), " Season $series Episode $episode.\n");
 			}
