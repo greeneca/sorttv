@@ -58,7 +58,7 @@ my ($sortdir, $tvdir, $miscdir, $musicdir, $matchtype);
 my ($xbmcoldwebserver, $xbmcaddress);
 my ($newshows, $new, $log);
 my @musicext = ("aac","aif","iff","m3u","mid","midi","mp3","mpa","ra","ram","wave","wav","wma","ogg","oga","ogx","spx","flac","m4a", "pls");
-my ( @whitelist, @blacklist, @sizerange);
+my ( @whitelist, @blacklist, @deletelist, @sizerange);
 my (%showrenames, %showtvdbids);
 my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = "TRUE";
 my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = "FALSE";
@@ -99,10 +99,15 @@ my @optionlist = (
 			# puts the shell pattern in as a regex
 			push @whitelist, glob2pat($_[1]);
 		},
-	"blacklist|black=s" =>
+	"blacklist|black|ignore=s" =>
 		sub {
 			# puts the shell pattern in as a regex
 			push @blacklist, glob2pat($_[1]);
+		},
+	"deletelist|delete=s" =>
+		sub {
+			# puts the shell pattern in as a regex
+			push @deletelist, glob2pat($_[1]);
 		},
 	"tvdb-id-substitute|tis=s" => 
 		sub { 
@@ -365,7 +370,7 @@ sub sort_directory {
 		my $filename = filename($file);
 
 		# check white and black lists
-		if(check_lists(filename($file)) eq "NEXT") {
+		if(check_lists($file) eq "NEXT") {
 			next FILE;
 		}
 		# check size
@@ -562,8 +567,13 @@ OPTIONS:
 	Uses shell-like simple pattern matches (eg *.avi)
 	This argument can be repeated to add more rules
 
---blacklist=pattern
-	Don't copy if the file matches one of these patterns
+--ignore=pattern
+	Don't copy if the file matches one of these blacklist patterns
+	Uses shell-like simple pattern matches (eg *.avi)
+	This argument can be repeated to add more rules
+
+--delete=pattern
+	Delete the source file, if the file matches one of these patterns
 	Uses shell-like simple pattern matches (eg *.avi)
 	This argument can be repeated to add more rules
 
@@ -928,7 +938,8 @@ sub ismusic {
 # checks white and black list
 # returns "OK" or "NEXT"
 sub check_lists {
-	my ($file) = @_;
+	my ($filepath) = @_;
+	my $file = filename($filepath);
 	# check whitelist, skip if doesn't match one
 	my $found = "FALSE";
 	foreach my $white (@whitelist) {
@@ -940,10 +951,20 @@ sub check_lists {
 		out("std", "SKIP: Doesn't match whitelist: $file\n");
 		return "NEXT";
 	}
+	# check deletelist, delete the source file if it matches any
+	foreach my $todelete (@deletelist) {
+		if($file =~ /$todelete/) {
+			out("std", "DELETE: Matches delete list: $filepath\n");
+			unless(unlink($filepath)) {
+				out("warn", "WARN: File could not be deleted: $!");
+			}
+			return "NEXT";
+		}
+	}
 	# check blacklist, skip if it matches any
 	foreach my $black (@blacklist) {
 		if($file =~ /$black/) {
-			out("std", "SKIP: Matches blacklist: $file\n");
+			out("std", "SKIP: Matches ignore list: $file\n");
 			return "NEXT";
 		}
 	}
@@ -1188,11 +1209,13 @@ sub fetchseasonimages {
 }
 
 sub fetchepisodeimage {
-	my ($fetchname, $newshowdir, $season, $seasondir, $episode, $newfilename) = @_;
-	my $epimage = $tvdb->getEpisodeBanner($fetchname, $season, $episode);
-	my $newimagepath = "$seasondir/$newfilename";
-	$newimagepath =~ s/(.*)(\..*)/$1.tbn/;
-	copy ("$scriptpath/.cache/$epimage", $newimagepath) if $epimage && -e "$scriptpath/.cache/$epimage";
+	eval { # ignore errors
+		my ($fetchname, $newshowdir, $season, $seasondir, $episode, $newfilename) = @_;
+		my $epimage = $tvdb->getEpisodeBanner($fetchname, $season, $episode);
+		my $newimagepath = "$seasondir/$newfilename";
+		$newimagepath =~ s/(.*)(\..*)/$1.tbn/;
+		copy ("$scriptpath/.cache/$epimage", $newimagepath) if $epimage && -e "$scriptpath/.cache/$epimage";
+	};
 }
 
 # lookup episode details based on show name and episode title or air date
@@ -1343,9 +1366,9 @@ sub move_an_ep {
 					require Encode;
 					$eptitle = " - " . Encode::decode_utf8( $name ) if $format == 1;
 					$eptitle = "." . Encode::decode_utf8( $name ) if $format == 2;
-					1;
-				} or do { # catch
-					out("warn", "WARN: Could not encode episode title.\n");
+				};
+				if($@) { # catch
+					out("warn", "WARN: Could not encode episode title: $@.\n");
 				};
 
 			} else {
@@ -1372,7 +1395,6 @@ sub move_an_ep {
 	$newpath = $season;
 	$newpath .= '/' if($newpath !~ /\/$/);
 	$newpath .= $newfilename;
-	
 	unless($verbose || ($sortby ne "COPY" && $sortby ne "PLACE-SYMLINK")) {
 		$sendxbmcnotifications = "";
 	}

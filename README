@@ -112,8 +112,13 @@ OPTIONS:
 		Uses shell-like simple pattern matches (eg *.avi)
 		This argument can be repeated to add more rules
 
-	--blacklist=pattern
+	--ignore=pattern
 		Don't copy if the file matches one of these patterns
+		Uses shell-like simple pattern matches (eg *.avi)
+		This argument can be repeated to add more rules
+
+	--delete=pattern
+		Delete the source file, if the file matches one of these patterns
 		Uses shell-like simple pattern matches (eg *.avi)
 		This argument can be repeated to add more rules
 
