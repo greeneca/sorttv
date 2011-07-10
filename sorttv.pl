@@ -1205,6 +1205,7 @@ sub fetchseasonep {
 	my $showtitle = $seriesall->{'SeriesName'};
 	if(defined $showtitle) {
 		if($eptitle =~ /\d{4}-\d{2}-\d{2}/){
+			out("verbose", "INFO: Looking for episode of $showtitle aired on $eptitle.\n");
 			# get episode details from show title and air date
 			my $epdetails = $tvdb->getEpisodeByAirDate($showtitle, $eptitle);
 			if(defined($epdetails)) {
@@ -1216,22 +1217,42 @@ sub fetchseasonep {
 				return @seasonep;
 			}
 		} else {
+			out("verbose", "INFO: Looking for episode of $showtitle named $eptitle.\n");
 			my $season = 1;
 			# work through the seasons
 			while(1) {
 				my @epid;
-				my $spot = 1;
+				my $seasonok = "FALSE";
 				eval {
+					$SIG{ALRM} = sub {die "timed out\n"};
+					out("verbose", "INFO: Fetching season $season episode list.\n");
+					alarm 1;
 					@epid = $tvdb->getSeason($showtitle, $season);
-					1;
-				} or do {
-					last; # if no more seasons, exit loop
+					alarm 0;
+					$SIG{ALRM} = sub {};
+					$seasonok = "TRUE";
 				};
+				# if no more seasons, exit loop
+				if($@) {
+					if($@ eq "timed out\n") {
+						out("verbose", "INFO: Timed out getting season $season details, likely does not exist.\n");
+					} else {
+						out("verbose", "INFO: Failed to get season $season details: $@.\n");
+					}
+					last;
+				} elsif($seasonok eq "FALSE") {
+					last; # if no more seasons, exit loop
+				}
+				# testing showed that the episode list contains some undefs, so know how many good values we will get
+				my $numdefined = scalar(@{$epid[0]});
+				my $spot = 1;
 				# process each episode id
-				while($epid[0]) {
+				# keep looping if the season exists and it has eps
+				while($epid[0] && $numdefined) {
 					if(defined($epid[0][$spot])) {
 						my $epdetails = $tvdb->getEpisodeId($epid[0][$spot]);
-						if(defined($epdetails)) {
+						# ignore any errors
+						eval{ if($epdetails && exists $epdetails->{'EpisodeName'}) {
 							# compare the Episode to the one in the search
 							if(fixtitle($epdetails->{'EpisodeName'}) =~ /^\Q$eptitle\E$/) {
 								$seasonep[0] = $epdetails->{'SeasonNumber'};
@@ -1241,7 +1262,9 @@ sub fetchseasonep {
 								# pass back the Season Number and Episode Number in an array
 								return @seasonep;
 							}
-						}
+						}};
+					}
+					if($spot < $numdefined) {
 						$spot++;
 					} else {
 						last;
