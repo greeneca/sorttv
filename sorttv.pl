@@ -61,10 +61,10 @@ my @musicext = ("aac","aif","iff","m3u","mid","midi","mp3","mpa","ra","ram","wav
 my ( @whitelist, @blacklist, @sizerange);
 my (%showrenames, %showtvdbids);
 my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = "TRUE";
-my $usedots = my $rename = my $verbose = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = "FALSE";
+my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = "FALSE";
 my $seasontitle = "Season ";
 my $sortby = "MOVE";
-my $sortolderthandays = my $poll = 0;
+my $sortolderthandays = my $poll = my $verbose = 0;
 my $ifexists = "SKIP";
 my $renameformat = "[SHOW_NAME] - [EP1][EP_NAME1]";
 my $treatdir = "RECURSIVELY_SORT_CONTENTS";
@@ -1373,7 +1373,7 @@ sub move_an_ep {
 	$newpath .= '/' if($newpath !~ /\/$/);
 	$newpath .= $newfilename;
 	
-	unless($verbose eq "TRUE" || ($sortby ne "COPY" && $sortby ne "PLACE-SYMLINK")) {
+	unless($verbose || ($sortby ne "COPY" && $sortby ne "PLACE-SYMLINK")) {
 		$sendxbmcnotifications = "";
 	}
 	if(sort_file($file, $newpath, "EPISODE") eq "TRUE") {
@@ -1403,7 +1403,7 @@ sub sort_file {
 	if(-e $newpath) {
 		if(filename($file) =~ /repack|proper/i) {
 			# still overwrites if copying, but doesn't output a message unless verbose
-			if($verbose eq "TRUE" || ($sortby ne "COPY" && $sortby ne "PLACE-SYMLINK")) {
+			if($verbose || ($sortby ne "COPY" && $sortby ne "PLACE-SYMLINK")) {
 				out("warn", "OVERWRITE: Repack/proper version.\n");
 				out("std", "$sortby $msg: sorting $file --to--> ", $newpath, "\n");
 			} # elsewhere: else $sendxbmcnotifications = ""
@@ -1413,7 +1413,7 @@ sub sort_file {
 			out("std", "$sortby $msg: sorting $file --to--> ", $newpath, "\n");
 			$retval = 'TRUE';
 		} elsif($ifexists eq "SKIP") {
-			if($verbose eq "TRUE" || ($sortby ne "COPY" && $sortby ne "PLACE-SYMLINK")) {
+			if($verbose || ($sortby ne "COPY" && $sortby ne "PLACE-SYMLINK")) {
 				out("warn", "SKIP: File $newpath already exists, skipping.\n");
 			}
 			return $retval;
