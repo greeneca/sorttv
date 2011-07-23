@@ -940,6 +940,9 @@ sub ismusic {
 sub check_lists {
 	my ($filepath) = @_;
 	my $file = filename($filepath);
+	if(-d $filepath) {
+		$file = "$file/"
+	}
 	# check whitelist, skip if doesn't match one
 	my $found = "FALSE";
 	foreach my $white (@whitelist) {
