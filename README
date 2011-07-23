@@ -215,10 +215,11 @@ OPTIONS:
 		Since this involves downloading the list of episodes from the Internet, this will cause a slower sort.
 		If not specified, TRUE
 
-	--sort-by=[MOVE|COPY|MOVE-AND-LEAVE-SYMLINK-BEHIND|PLACE-SYMLINK]
+	--sort-by=[MOVE|COPY|MOVE-AND-LEAVE-SYMLINK-BEHIND|PLACE-SYMLINK|PLACE-HARDLINK]
 		Sort by moving or copying the file. If the file already exists because it was already copied it is silently skipped.
 		The MOVE-AND-LEAVE-SYMLINK-BEHIND option may be handy if you want to continue to seed after sorting, this leaves a symlink in place of the newly moved file.
-		PLACE-SYMLINK does not move the original file, but places a symlink in the sort-to directory (probably not what you want).
+		PLACE-SYMLINK does not move the original file, but places a symlink in the sort-to directory (probably not what you want)
+		PLACE-HARDLINK does not move the original file, but places a hardlink in the sort-to directory. This might be helpful if you use Linux and you want a sorted and unsorted version on the same partition.
 		If not specified, MOVE
 
 	--treat-directories=[AS_FILES_TO_SORT|RECURSIVELY_SORT_CONTENTS|IGNORE]
