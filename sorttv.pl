@@ -587,6 +587,10 @@ OPTIONS:
 	This directory will contain the structure (Show)/(Seasons)/(episodes)
 	Alternatively set this to "KEEP_IN_SAME_DIRECTORIES" for a recursive renaming of files in directory-to-sort
 
+--movie-directory
+	Where to sort movies into
+	If not specified, movies are not moved
+
 --music-directory=dir
 	Where to sort music into
 	If not specified, music is not moved
@@ -654,7 +658,7 @@ OPTIONS:
 	Rename episodes to a new format when moving
 	If not specified, FALSE
 
---rename-format={formatstring}
+--rename-tv-format={formatstring}
 	the format to use if renaming to a new format (as specified above)
 	Hint: including the Episode Title as part of the name slows the process down a bit since titles are retrieved from thetvdb.com
 	The formatstring can be made up of:
@@ -670,6 +674,14 @@ OPTIONS:
 		--rename-format=[SHOW_NAME] - [EP1][EP_NAME1]
 		for "My Show.S01E01.Episode Title"
 		--rename-format=[SHOW_NAME].[EP1][EP_NAME2]
+
+--rename-movie-format={formatstring}
+	The format to use if renaming movies
+	The format can be made up of:
+		[MOVIE_TITLE]: "My Movie"
+		[YEAR1]: "(2011)"
+		[YEAR2]: "2011"
+	If not specified the format is, "[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEAR1]"
 
 --use-dots-instead-of-spaces=[TRUE|FALSE]
 	Renames episodes to replace spaces with dots
@@ -744,8 +756,9 @@ OPTIONS:
 	This may be helpful if you are writing to a Windows share from a Linux system
 	If not specified, TRUE
 
---lookup-language=[en|...]
-	Set language for thetvdb lookups, this effects episode titles etc
+--tv-lookup-language=[en|...]
+--movie-lookup-language=[en|...]
+	Set language for thetvdb / tmdb lookups, this effects episode and movie titles etc
 	Valid values include: it, zh, es, hu, nl, pl, sl, da, de, el, he, sv, eng, fi, no, fr, ru, cs, en, ja, hr, tr, ko, pt
 	If not specified, en (English)
 
@@ -767,6 +780,11 @@ OPTIONS:
 	Sets the image format to use, poster or banner.
 	POSTER/BANNER
 	if not specified, POSTER
+
+--fetch-movie-images=[TRUE|FALSE]
+	Download images for movies
+	Downloaded images are copied into the sort-to (destination) directory.
+	If not specified, TRUE
 
 --if-file-exists=[SKIP|OVERWRITE]
 	What to do if a file already exists in the destination
