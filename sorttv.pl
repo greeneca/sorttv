@@ -36,18 +36,21 @@
 #  the Free Software Foundation, either version 3 of the License, or
 #  (at your option) any later version.
 
+use warnings;
+use strict;
+
 use File::Copy::Recursive "dirmove", "dircopy";
 use File::Copy;
 use File::Glob ':glob';
-use LWP::Simple;
+use LWP::Simple qw($ua getstore get is_success);
 use File::Spec::Functions "rel2abs";
 use File::Basename;
 use TVDB::API;
+use WWW::TheMovieDB::Search;
+use XML::Simple;
 use File::Find;
 use File::Path qw(make_path);
 use FileHandle;
-use warnings;
-use strict;
 use Fcntl ':flock';
 use Getopt::Long;
 use Getopt::Long qw(GetOptionsFromString);
@@ -55,11 +58,11 @@ use IO::Socket;
 
 # Global config variables
 my $man = my $help = 0;
-my ($sortdir, $tvdir, $miscdir, $musicdir, $matchtype);
+my ($sortdir, $tvdir, $miscdir, $musicdir, $moviedir, $matchtype);
 my ($xbmcoldwebserver, $xbmcaddress);
 my ($newshows, $new, $log);
 my @musicext = ("aac","aif","iff","m3u","mid","midi","mp3","mpa","ra","ram","wave","wav","wma","ogg","oga","ogx","spx","flac","m4a", "pls");
-my ( @whitelist, @blacklist, @deletelist, @sizerange);
+my (@whitelist, @blacklist, @deletelist, @sizerange);
 my (%showrenames, %showtvdbids);
 my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = "TRUE";
 my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = "FALSE";
@@ -68,14 +71,20 @@ my $sortby = "MOVE";
 my $sortolderthandays = my $poll = my $verbose = 0;
 my $ifexists = "SKIP";
 my $renameformat = "[SHOW_NAME] - [EP1][EP_NAME1]";
+my $movierenameformat = "[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEAR1]";
+my $fetchmovieimages = "TRUE";
 my $treatdir = "RECURSIVELY_SORT_CONTENTS";
 my $fetchimages = "NEW_SHOWS";
 my $imagesformat = "POSTER";
 my $scriptpath = dirname(rel2abs($0));
 my $logfile = "$scriptpath/sorttv.log";
 my $tvdblanguage = "en";
+my $movielanguage = "en";
 my $tvdb;
+my $tmdb;
 my $forceeptitle = ""; # HACK for limitation in TVDB API module
+# download timeout
+$ua->timeout(20);
 
 my @optionlist = (
 	"misc-dir|non-episode-dir|misc=s" => sub { set_directory($_[1], \$miscdir); },
@@ -120,13 +129,16 @@ my @optionlist = (
 		},
 	"log-file|o=s" => \$logfile,
 	"fetch-show-title|fst=s" => \$tvdbrename,
-	"rename-episodes|rn=s" => \$rename,
-	"lookup-language|lang=s" => \$tvdblanguage,
-	"fetch-images|fi=s" => \$fetchimages,
+	"rename-media|rename-episodes|rn=s" => \$rename,
+	"tv-lookup-language|lookup-language|lang=s" => \$tvdblanguage,
+	"movie-lookup-language|lang=s" => \$movielanguage,
+	"fetch-tv-images|fetch-images|fi=s" => \$fetchimages,
+	"fetch-movie-images|fi=s" => \$fetchmovieimages,
 	"images-format|im=s" => \$imagesformat,
 	"require-show-directories-already-exist|rs=s" => \$needshowexist,
 	"force-windows-compatible-filenames|fw=s" => \$windowsnames,
-	"rename-format|rf=s" => \$renameformat,
+	"rename-tv-format|rename-format|rf=s" => \$renameformat,
+	"rename-movie-format|rf=s" => \$movierenameformat,
 	"remove-symlinks|rs=s" => \$removesymlinks,
 	"use-dots-instead-of-spaces|dots=s" => \$usedots,
 	"sort-by|by=s" => \$sortby,
@@ -181,8 +193,8 @@ my @optionlist = (
 		},
 	"no-network|nn" => 
 		sub {
-			$xbmcoldwebserver = "";
-			$xbmcaddress = "";
+			out("verbose", "INFO: Disabling all network enabled features\n");
+			$xbmcoldwebserver = $xbmcaddress = $moviedir = "";
 			$tvdbrename = $fetchimages = $lookupseasonep = $checkforupdates = "FALSE";
 			$renameformat =~ s/\[EP_NAME\d\]//;
 		},
@@ -201,6 +213,8 @@ my @optionlist = (
 				set_directory($_[1], \$tvdir);
 			}
 		},
+	"movie-directory|movie=s" => sub { set_directory($_[1], \$moviedir); },
+	"movie-language|mlang=s" => \$movielanguage,
 	"music-directory|music=s" => sub { set_directory($_[1], \$musicdir); },
 	"music-extension|me=s" => \@musicext,
 	"h|help|?" => \$help, man => \$man
@@ -252,6 +266,12 @@ my ($showname, $year, $series, $episode, $pureshowname) = "";
 		$tvdb->setCacheDB("$scriptpath/.cache/.tvdb.db");
 		$tvdb->setUserAgent("SortTV");
 		$tvdb->setBannerPath("$scriptpath/.cache/");
+	}
+
+	# if uses moviedb, set it up
+	if($moviedir) {
+		$tmdb = new WWW::TheMovieDB::Search('e3df0ef251745a7833d9e9114fc9b0c1');
+		$tmdb->lang($movielanguage);
 	}
 
 	$log = FileHandle->new("$logfile", "a") or out("warn", "WARN: Could not open log file $logfile: $!\n") if $logfile;
@@ -482,6 +502,19 @@ sub sort_directory {
 			}
 		} else {
 			$nonep = "TRUE";
+		}
+		# Movie regex
+		if(($nonep eq "TRUE" && -r $file && $moviedir) and ($filename =~ /(.*?)\s*-?\s*\(?\[?([12][0-9]{3})\)?\]?(?:BDRip|\[Eng]|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)*.*(\.\w*)/i
+			|| $filename =~ /(.*?)(?:[[\]{}()]|\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)+.*?()(\.\w*)/i
+			|| $filename =~ /(.*)()(\.\w*)/i)) {
+			my $title = $1;
+			my $year = $2;
+			my $ext = $3;
+			$title =~ s/(?:\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5|[[\]{}()])//ig;
+			# at this point if it is not a known movie it is an "other"
+			if(match_and_sort_movie($title, $year, $ext, $file) eq "TRUE") {
+				$nonep = "FALSE";
+			}
 		}
 		# move non-episodes
 		if($nonep eq "TRUE" && defined $miscdir && $tvdir ne "KEEP_IN_SAME_DIRECTORIES") {
@@ -797,9 +830,10 @@ END
 # removes the dir path
 sub fixtitle {
 	my ($title) = @_;
+	$title = lc($title);
 	$title =~ s/,|\.the\.|\bthe\b//ig;
 	$title =~ s/\.and\.|\band\b//ig;
-	$title =~ s/&|\+|'|_//ig;
+	$title =~ s/[&+'_:"!]//ig;
 	$title =~ s/(.*\/)(.*)/$2/;
 	$title = remdot($title);
 	$title =~ s/\d|\s|\(|\)//ig;
@@ -1518,6 +1552,141 @@ sub move_series {
 			}
 		}
 		return 0;
+	}
+}
+
+# Matches the title and year to known movies
+# If a match is found, the file is sorted
+# Returns whether it was sorted (TRUE or FALSE)
+sub match_and_sort_movie {
+	my ($title, $year, $ext, $file) = @_;
+
+	out("verbose",  "INFO: Looking for movie matching $title using the movie db\n");
+	my $result = $tmdb->Movie_search(remdot($title));
+	unless($result) {
+		return "FALSE";
+	}
+	# remove small images, left with the biggest ones
+	$result =~ s/.*<image.*size="(?:w\d+|thumb|small|cover|mid|poster)".*//ig;
+	# if the title doesn't end in a number, then add a new number to make sure the hash index is unique
+	my $i = 0;
+	do{
+		$i++;
+	} while($result =~ s/<name>(.*\D)<\/name>/<name>$1$i<\/name>/i);
+
+	# convert to hash ref structure
+	my $ref = XMLin($result);
+	# all is well and we have at least one match
+	unless($ref && $ref->{"opensearch:totalResults"}) {
+		return "FALSE";
+	}
+	my @arr;
+	my $mlistref;
+	$mlistref = $ref->{movies}{movie} if($ref->{'opensearch:totalResults'} > 1);
+	$mlistref = $ref->{movies} if($ref->{'opensearch:totalResults'} == 1);
+
+	@arr = keys %{$mlistref};
+	out("verbose",  "INFO: $ref->{'opensearch:totalResults'} movies are similar to $title, checking if they are close enough matches...\n");
+	out("warn", "WARN: Movie matches with the exact same name and ending in a number have been ignored, sorry this is a known limitation\n") if($ref->{'opensearch:totalResults'} != scalar @arr);
+	MOVIE: foreach my $movie (@arr) {
+		my $altname = ${$$mlistref{$movie}}{"alternative_name"};
+		my $orgname = ${$$mlistref{$movie}}{"original_name"};
+		my $released = ${$$mlistref{$movie}}{"released"};
+		out("verbose",  "INFO: Comparing to $altname,$orgname\n");
+
+		if(fixtitle($movie) eq fixtitle($title)
+		|| (defined $altname && scalar $altname && fixtitle(${$$mlistref{$movie}}{"alternative_name"}) eq fixtitle($title))
+		|| (defined $orgname && scalar $orgname && fixtitle(${$$mlistref{$movie}}{"original_name"}) eq fixtitle($title))) {
+			out("verbose",  "INFO: Title matches\n");
+			# choose title to use
+			my $movietitle = defined $orgname ? $orgname : defined $altname ? $altname : $movie;
+			if($year) {
+				my $released_year;
+				if($released =~ /(\d{4})-\d{2}-\d{2}/) {
+					$released_year = $1;
+					if($released_year eq $year) {
+						out("verbose", "INFO: Year also matches\n");
+						my $img = ${$$mlistref{$movie}}{"images"}{"image"};
+						sort_movie($file, $movietitle, $year, $ext, $img);
+						return "TRUE";
+					} else {
+						print "WARN: Found matching movie '$movietitle', but does not match year in filename (named $year not $released_year), skipping\n";
+						next MOVIE;
+					}
+				}
+			} else {
+				my $img = ${$$mlistref{$movie}}{"images"}{"image"};
+				sort_movie($file, $movietitle, $year, $ext, $img);
+				return "TRUE";
+			}
+		}
+	}
+	# at this point, we didn't find a match
+	return "FALSE";
+}
+
+sub sort_movie {
+	my ($file, $title, $year, $ext, $img) = @_;
+	my ($mdir, $dest);
+	my $sendxbmcnotifications = $xbmcoldwebserver;
+	$sendxbmcnotifications or $sendxbmcnotifications = $xbmcaddress;
+
+	if($rename) {
+		my $location = $movierenameformat;
+		$location =~ s/\[MOVIE_TITLE]/$title/ig;
+		if($year) {
+			$location =~ s/\[YEAR1]/($year)/ig;
+			$location =~ s/\[YEAR2]/$year/ig;
+		} else {
+			$location =~ s/[. -]*\[YEAR1]//ig;
+			$location =~ s/[. -]*\[YEAR2]//ig;
+		}
+		$location =~ s/$/$ext/ig;
+
+		$dest = $location;
+	} else {
+		$dest = filename($file);
+	}
+	if($usedots eq "TRUE") {
+		$dest =~ s/\s/./ig;
+	}
+
+	$mdir = path($moviedir.$dest);
+	out("std", "INFO: Making directory: $mdir\n") unless(-e $mdir);
+	make_path($mdir);
+	if(sort_file($file, $moviedir.$dest, "MOVIE") eq "TRUE") {
+		# if the movie was sorted...
+		# download images
+		out("std", "INFO: Fetching movie images\n");
+		if($fetchmovieimages ne "FALSE") {
+			foreach my $image (keys %$img) {
+				my $status;
+				eval {
+				if($$img{$image}{type} eq "poster") {
+					out("std", "INFO: Downloading poster for $title\n");
+					for(my $tries=0;$tries<2&&!LWP::Simple::is_success($status);$tries++) {
+						$status = LWP::Simple::getstore( $$img{$image}{url}, "${mdir}folder.jpg" ) || (out("warn", "Failed to download image\n") && next);
+					}
+				} elsif($$img{$image}{type} eq "backdrop") {
+					out("std", "INFO: Downloading backdrop for $title\n");
+					for(my $tries=0;$tries<2&&!LWP::Simple::is_success($status);$tries++) {
+						$status = LWP::Simple::getstore( $$img{$image}{url}, "${mdir}fanart.jpg" ) || (out("warn", "Failed to download image\n") && next);
+					}
+				}
+				};
+			}
+		}
+		if($sendxbmcnotifications) {
+			my $new = "$title $year";
+			$newshows .= "$new\n";
+			if($sendxbmcnotifications && $xbmcoldwebserver) {
+				my $retval = get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(NEW MOVIE, $new, 7000))";
+				if(undef($retval)) {
+					out("warn", "WARN: Could not connect to xbmc webserver.\nRECOMMENDATION: If you do not use this feature you should disable it in the configuration file.\n");
+					$xbmcoldwebserver = "";
+				}
+			}
+		}
 	}
 }
 
