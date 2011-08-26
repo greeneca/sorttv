@@ -355,6 +355,7 @@ sub process_args {
 sub display_sortdirs {
 	out("std", "Sorting:\n\tFrom $sortdir\n") if $sortdir;
 	out("std", "\tTV episodes into $tvdir\n") if $tvdir;
+	out("std", "\tmovies into $moviedir\n") if $moviedir;
 	out("std", "\tmusic into $musicdir\n") if $musicdir;
 	out("std", "\teverything else into $miscdir\n") if $miscdir;
 }
