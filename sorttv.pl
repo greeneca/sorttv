@@ -932,7 +932,9 @@ sub remdot {
 	my ($title) = @_;
 	$title =~ s/\./ /ig;
 	$title =~ s/_/ /ig;
-	$title =~ s/-//ig;
+	$title =~ s/-/ /ig;
+	# remove double spaces
+	$title =~ s/\s\s/ /ig;
 	# don't start or end on whitespace
 	$title =~ s/\s$//ig;
 	$title =~ s/^\s//ig;
