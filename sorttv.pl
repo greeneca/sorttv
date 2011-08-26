@@ -1030,11 +1030,19 @@ sub check_lists {
 
 sub check_filesize {
 	my ($file) = @_;
-	my $filesize = (-s $file) / 1024 / 1024;
 
 	# only check size if configured, and it is a regular file
 	if (! -f $file || @sizerange == 0) {
 		return "OK";
+	}
+
+	# calculate the size of the file in MB
+	my $size = -s $file;
+	my $filesize;
+	if($size) {
+		$filesize = $size / 1024 / 1024;
+	} else {
+		$filesize = 0;
 	}
 
 	# Loop through the size ranges passed in via the config file
