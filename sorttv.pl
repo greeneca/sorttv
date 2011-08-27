@@ -311,6 +311,7 @@ sub check_for_updates {
 		($localmaj, $localmin) = ($1, $2);
 	}
 	$currentversion = get "http://sorttv.git.sourceforge.net/git/gitweb.cgi?p=sorttv/sorttv;a=blob_plain;f=.sorttv.version;hb=HEAD";
+	return unless $currentversion;
 	if($currentversion =~ /(\d+).(\d+)/) {
 		($currentmaj, $currentmin) = ($1, $2);
 	}
