@@ -1804,7 +1804,7 @@ sub sort_movie {
 		}
 		$location =~ s/$/$ext/ig;
 
-		$dest = $location;
+		$dest = escape_myfilename($location);
 	} else {
 		$dest = filename($file);
 	}
