@@ -950,6 +950,14 @@ sub filename {
 	return $title;
 }
 
+# removes path and extension
+sub filename_without_ext {
+	my ($title) = @_;
+	$title =~ s/(.*\/)(.*)/$2/;
+	$title =~ s/(.*)\..*/$1/;
+	return $title;
+}
+
 # removes filename
 sub path {
 	my ($title) = @_;
@@ -1089,6 +1097,11 @@ sub extract_archives {
 		my $dest = filename($sortd) . "/" . $arfile . " (extracted by SortTV)";
 		if(-e $dest) {
 			out("std", "SKIP: already extracted: $dest\n");
+			next;
+		}
+		#my $filename_start = filename($sortd) . "/" . filename($arfile);
+		if(bsd_glob($escapedsortd.filename_without_ext($arfile).'*.{part}*')) {
+			out("std", "SKIP: parts are still downloading: $arfile\n");
 			next;
 		}
 		unless (mkdir($dest)) {
