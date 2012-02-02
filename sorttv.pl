@@ -1092,7 +1092,7 @@ sub num_found_in_list {
 sub extract_archives {
 	my ($escapedsortd, $sortd) = @_;
 	my $over = "";
-	my @errors = (-1, 32512);
+	my @errors = (-1, 32512, 256);
 	foreach my $arfile (bsd_glob($escapedsortd.'*.{rar,zip,7z,gz,bz2}')) {
 		my $dest = filename($sortd) . "/" . $arfile . " (extracted by SortTV)";
 		if(-e $dest) {
