@@ -668,8 +668,9 @@ OPTIONS:
 	[EP1]: "S01E01"
 	[EP2]: "1x1"
 	[EP3]: "1x01"
-	[EP_NAME1] " - Episode Title"
-	[EP_NAME2] ".Episode Title"
+	[EP_NAME1]: " - Episode Title"
+	[EP_NAME2]: ".Episode Title"
+	[QUALITY]: " HD" (or " SD") - extracted from original file name
 	If not specified the format is "[SHOW_NAME] - [EP1][EP_NAME1]"
 	For example:
 		for "My Show S01E01 - Episode Title" (this is the default)
@@ -683,6 +684,7 @@ OPTIONS:
 		[MOVIE_TITLE]: "My Movie"
 		[YEAR1]: "(2011)"
 		[YEAR2]: "2011"
+		[QUALITY]: " HD" (or " SD") - extracted from original file name
 	If not specified the format is, "[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEAR1]"
 
 --use-dots-instead-of-spaces=[TRUE|FALSE]
@@ -1418,6 +1420,23 @@ sub tvdb_title {
 	return $filetitle;
 }
 
+# for now, just finds quality as specified in the file name
+sub extract_quality {
+	my ($file) = @_;
+	my $filename = filename($file);
+	foreach my $qual ("Bluray", "\bHD\b", "720p", "1080p", "High definition") {
+		if($file =~ /$qual/) {
+			# look no further
+			return "HD";
+		}
+	}
+	foreach my $qual ("DVD", "\bSD\b") {
+		if($file =~ /$qual/) {
+			return "SD";
+		}
+	}
+}
+
 sub move_an_ep {
 	my($file, $season, $show, $series, $episode) = @_;
 	my $newfilename = filename($file);
@@ -1475,6 +1494,10 @@ sub move_an_ep {
 		$newfilename =~ s/\[EP2]/$ep2/ig;
 		$newfilename =~ s/\[EP3]/$ep3/ig;
 		$newfilename =~ s/\[EP_NAME\d]/$eptitle/ig;
+		if($newfilename =~ /\[QUALITY]/i) {
+			my $quality = extract_quality($file);
+			$newfilename =~ s/\[QUALITY]/ $quality/ig;
+		}
 		$newfilename .= $ext;
 		# make sure it is filesystem friendly:
 		$newfilename = escape_myfilename($newfilename, "-");
@@ -1691,6 +1714,10 @@ sub sort_movie {
 		} else {
 			$location =~ s/[. -]*\[YEAR1]//ig;
 			$location =~ s/[. -]*\[YEAR2]//ig;
+		}
+		if($location =~ /\[QUALITY]/i) {
+			my $quality = extract_quality($file);
+			$location =~ s/\[QUALITY]/ $quality/ig;
 		}
 		$location =~ s/$/$ext/ig;
 
