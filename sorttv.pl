@@ -1424,15 +1424,15 @@ sub tvdb_title {
 sub extract_quality {
 	my ($file) = @_;
 	my $filename = filename($file);
-	foreach my $qual ("Bluray", "\bHD\b", "720p", "1080p", "High definition") {
-		if($file =~ /$qual/) {
+	foreach my $qual ("Bluray", "BlurayRip", "HD", "720p", "1080p", "High definition") {
+		if($filename =~ /\b$qual\b/i) {
 			# look no further
-			return "HD";
+			return " HD";
 		}
 	}
-	foreach my $qual ("DVD", "\bSD\b") {
-		if($file =~ /$qual/) {
-			return "SD";
+	foreach my $qual ("DVD", "SD", "DVDRip") {
+		if($filename =~ /\b$qual\b/i) {
+			return " SD";
 		}
 	}
 }
@@ -1496,7 +1496,11 @@ sub move_an_ep {
 		$newfilename =~ s/\[EP_NAME\d]/$eptitle/ig;
 		if($newfilename =~ /\[QUALITY]/i) {
 			my $quality = extract_quality($file);
-			$newfilename =~ s/\[QUALITY]/ $quality/ig;
+			$newfilename =~ s/\[QUALITY]/$quality/ig;
+		}
+		# keep any "part 1" etc on the end of the new filename
+		if(filename($file) =~ /(\b(?:part|cd|disk)\s?\.?\d+)\b/) {
+			$newfilename .= " $1";
 		}
 		$newfilename .= $ext;
 		# make sure it is filesystem friendly:
