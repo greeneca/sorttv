@@ -180,6 +180,7 @@ OPTIONS:
 			[EP3]: "1x01"
 			[EP_NAME1] " - Episode Title"
 			[EP_NAME2] ".Episode Title"
+			[QUALITY]: " HD" (or " SD") - extracted from original file name
 		If not specified the format is, "[SHOW_NAME] - [EP1][EP_NAME1]"
 		For example:
 			for "My Show S01E01 - Episode Title" (this is the default)
@@ -193,6 +194,7 @@ OPTIONS:
 			[MOVIE_TITLE]: "My Movie"
 			[YEAR1]: "(2011)"
 			[YEAR2]: "2011"
+			[QUALITY]: " HD" (or " SD") - extracted from original file name
 		If not specified the format is, "[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEAR1]"
 
 	--use-dots-instead-of-spaces=[TRUE|FALSE]
