@@ -1205,7 +1205,11 @@ sub dir_matching_show_name {
 	}
 	if($needshowexist ne "TRUE" && !$year) {
 		# we couldn't find a matching show (and we are not looking for year specific), make DIR
-		my $newshowdir = $tvdir .escape_myfilename(resolve_show_name($pureshowname));
+		my $newshow = escape_myfilename(resolve_show_name($pureshowname));
+		if($usedots eq "TRUE") {
+			$newshow =~ s/\s/./ig;
+		}
+		my $newshowdir = $tvdir . $newshow;
 		out("std", "INFO: making show directory: $newshowdir\n");
 		if(mkdir($newshowdir, 0777)) {
 			fetchshowimages(resolve_show_name($pureshowname), $newshowdir) if $fetchimages ne "FALSE";
@@ -1227,7 +1231,11 @@ sub dir_matching_season {
 	}
 	# didn't find a matching season, make DIR
 	out("std", "INFO: making season directory: $show/$seasontitle$series\n");
-	my $newpath = "$show/$seasontitle$series";
+	my $newdir = $seasontitle.$series;
+	if($usedots eq "TRUE") {
+		$newdir =~ s/\s/./ig;
+	}
+	my $newpath = "$show/$newdir";
 	if(mkdir($newpath, 0777)) {
 		fetchseasonimages(resolve_show_name($pureshowname), $show, $series, $newpath) if $fetchimages ne "FALSE";
 		return $newpath; # try again now that the dir exists
