@@ -221,8 +221,10 @@ my @optionlist = (
 	"tv-directory|directory-to-sort-into|tvdir=s" => 
 		sub {
 			if($_[1] eq "KEEP_IN_SAME_DIRECTORIES") {
+				out("std", "INFO: disabling everything except tv sorts within the same directory");
 				$miscdir = "";
 				$musicdir = "";
+				$moviedir = "";
 				$tvdir = "KEEP_IN_SAME_DIRECTORIES";
 			} else {
 				set_directory($_[1], \$tvdir);
@@ -258,7 +260,8 @@ my ($showname, $year, $series, $episode, $pureshowname) = "";
 	# we stop the script and show the help if help or man option was used
 	showhelp() if $help or $man;
 
-	if(!defined($sortdir) || !defined($tvdir)) {
+	# ensure at least one input and one output
+	if((!defined($sortdir) && !defined(@filestosort)) || (!defined($tvdir) && !defined($moviedir) && !defined($musicdir) && !defined($miscdir))) {
 		out("warn", "Incorrect usage or configuration (missing sort or sort-to directories)\n");
 		out("warn", "run 'perl sorttv.pl --help' for more information about how to use SortTV");
 		exit;
@@ -1716,23 +1719,27 @@ sub match_and_sort_movie {
 			out("verbose",  "INFO: Title matches\n");
 			# choose title to use
 			my $movietitle = defined $orgname ? $orgname : defined $altname ? $altname : $movie;
-			if($year) {
-				my $released_year;
-				if($released =~ /(\d{4})-\d{2}-\d{2}/) {
-					$released_year = $1;
-					if($released_year eq $year) {
-						out("verbose", "INFO: Year also matches\n");
-						my $img = ${$$mlistref{$movie}}{"images"}{"image"};
-						sort_movie($file, $movietitle, $year, $ext, $img);
-						return "TRUE";
-					} else {
-						print "WARN: Found matching movie '$movietitle', but does not match year in filename (named $year not $released_year), skipping\n";
-						next MOVIE;
-					}
+			my $released_year;
+			if($released =~ /(\d{4})-\d{2}-\d{2}/) {
+				$released_year = $1;
+			} else {
+				out("warn", "WARN: could not extract year from online movie information\n");
+			}
+			if($year && $released_year) {
+				if($released_year eq $year) {
+					out("verbose", "INFO: Year also matches\n");
+					my $img = ${$$mlistref{$movie}}{"images"}{"image"};
+					sort_movie($file, $movietitle, $year, $ext, $img);
+					return "TRUE";
+				} else {
+					print "WARN: Found matching movie '$movietitle', but does not match year in filename (named $year not $released_year), skipping\n";
+					next MOVIE;
 				}
 			} else {
+				# choose year to use
+				my $yeartouse = defined $year ? $year : defined $released_year ? $released_year : "";
 				my $img = ${$$mlistref{$movie}}{"images"}{"image"};
-				sort_movie($file, $movietitle, $year, $ext, $img);
+				sort_movie($file, $movietitle, $yeartouse, $ext, $img);
 				return "TRUE";
 			}
 		}
