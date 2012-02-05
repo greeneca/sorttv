@@ -93,6 +93,10 @@ OPTIONS:
 		A directory containing files to sort
 		For example, set this to where completed downloads are stored
 
+	--file-to-sort=file
+		A file to be sorted
+		This argument can be repeated to add multiple individual files to sort
+
 	--tv-directory=dir
 		Where to sort episodes into (dir that will contain dirs for each show)
 		This directory will contain the structure (Show)/(Seasons)/(episodes)

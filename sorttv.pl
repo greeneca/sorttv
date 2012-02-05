@@ -62,7 +62,7 @@ my ($sortdir, $tvdir, $miscdir, $musicdir, $moviedir, $matchtype);
 my ($xbmcoldwebserver, $xbmcaddress);
 my ($newshows, $new, $log);
 my @musicext = ("aac","aif","iff","m3u","mid","midi","mp3","mpa","ra","ram","wave","wav","wma","ogg","oga","ogx","spx","flac","m4a", "pls");
-my (@whitelist, @blacklist, @deletelist, @sizerange);
+my (@whitelist, @blacklist, @deletelist, @sizerange, @filestosort);
 my (%showrenames, %showtvdbids);
 my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = "TRUE";
 my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = "FALSE";
@@ -208,6 +208,15 @@ my @optionlist = (
 		sub {
 			get_config_from_file($_[1]);
 		},
+	"file-to-sort|file=s" => 
+		sub {
+			if(-r $_[1]) {
+				push @filestosort, $_[1];
+			} else {
+				out("warn", "WARN: file $_[1] does not exist\n");
+			}
+			print "\@filestosort: @filestosort\n";
+		},
 	"directory-to-sort|sort=s" => sub { set_directory($_[1], \$sortdir); },
 	"tv-directory|directory-to-sort-into|tvdir=s" => 
 		sub {
@@ -286,7 +295,7 @@ my ($showname, $year, $series, $episode, $pureshowname) = "";
 
 	do {
 		display_time();
-		sort_directory($sortdir);
+		sort_directory($sortdir, @filestosort);
 
 		if($xbmcoldwebserver && $newshows) {
 			sleep(4);
@@ -382,7 +391,8 @@ sub set_directory {
 }
 
 sub sort_directory {
-	my ($sortd) = @_;
+	# passed the directory to sort the contents of, and any additional files
+	my ($sortd, @files) = @_;
 	# escape special characters from  bsd_glob
 	my $escapedsortd = $sortd;
 	$escapedsortd =~ s/(\[|]|\{|}|-|~)/\\$1/g;
@@ -391,7 +401,7 @@ sub sort_directory {
 		extract_archives($escapedsortd, $sortd);
 	}
 
-	FILE: foreach my $file (bsd_glob($escapedsortd.'*')) {
+	FILE: foreach my $file (bsd_glob($escapedsortd.'*'), @files) {
 		$showname = "";
 		my $nonep = "FALSE";
 		my $dirsandfile = $file;
@@ -589,6 +599,10 @@ OPTIONS:
 --directory-to-sort=dir
 	A directory containing files to sort
 	For example, set this to where completed downloads are stored
+
+--file-to-sort=file
+	A file to be sorted
+	This argument can be repeated to add multiple individual files to sort
 
 --tv-directory=dir
 	Where to sort episodes into (dir that will contain dirs for each show)
