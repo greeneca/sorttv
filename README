@@ -112,6 +112,11 @@ OPTIONS:
 		If this is supplied then files and directories that SortTV does not believe are episodes will be moved here
 		If not specified, non-episodes are not moved
 
+	--dry-run
+		Dry run mode
+		No file operations will occur on the to-sort directory.
+		Some directories may be created at the destination.
+
 	--whitelist=pattern
 		Only copy if the file matches one of these patterns
 		Uses shell-like simple pattern matches (eg *.avi)

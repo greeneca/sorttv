@@ -66,6 +66,7 @@ my (@whitelist, @blacklist, @deletelist, @sizerange);
 my (%showrenames, %showtvdbids);
 my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = "TRUE";
 my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = "FALSE";
+my $dryrun = "";
 my $seasontitle = "Season ";
 my $sortby = "MOVE";
 my $sortolderthandays = my $poll = my $verbose = 0;
@@ -169,6 +170,11 @@ my @optionlist = (
 	"use-season-directories|sd=s" => \$useseasondirs,
 	"season-title|st=s" => \$seasontitle,
 	"verbose|v" => \$verbose,
+	"dry-run|n" => 
+		sub {
+			$dryrun = "DRYRUN ";
+			out("std", "DRY RUN MODE: No file operations will occur on the to-sort directory, some directories may be created at the destination.\n");
+		},
 	"filesize-range|fsrange=s" =>
 		sub {
 			# Extract the min & max values, can mix and match postfixes
@@ -602,6 +608,10 @@ OPTIONS:
 	If this is supplied then files and directories that SortTV does not believe are episodes will be moved here
 	If not specified, non-episodes are not moved
 
+--dry-run
+	Dry run mode. No file operations will occur on the to-sort directory.
+	Some directories may be created at the destination.
+
 --whitelist=pattern
 	Only copy if the file matches one of these patterns
 	Uses shell-like simple pattern matches (eg *.avi)
@@ -970,6 +980,7 @@ sub path {
 	}
 }
 
+# converts to filesystem friendly names
 sub escape_myfilename {
 	my ($name) = @_;
 	if($^O =~ /MSWin/ || $windowsnames eq "TRUE") {
@@ -993,6 +1004,7 @@ sub glob2pat {
 	return '^' . $globstr . '$';
 }
 
+# checks whether the file extension matches a known music format
 sub ismusic {
 	my ($file) = @_;
 	foreach my $ext (@musicext) {
@@ -1279,6 +1291,10 @@ sub fetchshowimages {
 	my $banner = $tvdb->getSeriesBanner($fetchname);
 	my $fanart = $tvdb->getSeriesFanart($fetchname);
 	my $poster = $tvdb->getSeriesPoster($fetchname);
+	if($dryrun) {
+		out("std", "DRYRUN: not copying images.\n");
+		return;
+	}
 	copy ("$scriptpath/.cache/$fanart", "$newshowdir/fanart.jpg") if $fanart && -e "$scriptpath/.cache/$fanart";
 	copy ("$scriptpath/.cache/$banner", "$newshowdir/banner.jpg") if $banner && -e "$scriptpath/.cache/$banner";
 	copy ("$scriptpath/.cache/$poster", "$newshowdir/poster.jpg") if $poster && -e "$scriptpath/.cache/$poster";
@@ -1293,6 +1309,10 @@ sub fetchseasonimages {
 	out("std", "DOWNLOAD: downloading season image for $fetchname\n");
 	my $banner = $tvdb->getSeasonBanner($fetchname, $season);
 	my $bannerwide = $tvdb->getSeasonBannerWide($fetchname, $season);
+	if($dryrun) {
+		out("std", "DRYRUN: not copying images.\n");
+		return;
+	}
 	my $snum = sprintf("%02d", $season);
 	copy ("$scriptpath/.cache/$banner", "$newshowdir/season${snum}.jpg") if $banner && -e "$scriptpath/.cache/$banner" && $imagesformat eq "POSTER";
 	copy ("$scriptpath/.cache/$bannerwide", "$newshowdir/season${snum}.jpg") if $bannerwide && -e "$scriptpath/.cache/$bannerwide" && $imagesformat eq "BANNER";
@@ -1304,6 +1324,10 @@ sub fetchepisodeimage {
 	eval { # ignore errors
 		my ($fetchname, $newshowdir, $season, $seasondir, $episode, $newfilename) = @_;
 		my $epimage = $tvdb->getEpisodeBanner($fetchname, $season, $episode);
+		if($dryrun) {
+			out("std", "DRYRUN: not copying images.\n");
+			return;
+		}
 		my $newimagepath = "$seasondir/$newfilename";
 		$newimagepath =~ s/(.*)(\..*)/$1.tbn/;
 		copy ("$scriptpath/.cache/$epimage", $newimagepath) if $epimage && -e "$scriptpath/.cache/$epimage";
@@ -1558,29 +1582,29 @@ sub sort_file {
 			return $retval;
 		}
 	} else {
-		out("std", "$sortby $msg: sorting $file --to--> ", $newpath, "\n");
+		out("std", "$dryrun$sortby $msg: sorting $file --to--> ", $newpath, "\n");
 		$retval = 'TRUE';
 	}
 	if($sortby eq "MOVE" || $sortby eq "MOVE-AND-LEAVE-SYMLINK-BEHIND") {
 		if(-d $file) {
-			dirmove($file, $newpath) or out("warn", "File $file cannot be moved to $newpath. : $!");
+			$dryrun or dirmove($file, $newpath) or out("warn", "File $file cannot be moved to $newpath. : $!");
 		} else {
-			move($file, $newpath) or out("warn", "File $file cannot be moved to $newpath. : $!");
+			$dryrun or move($file, $newpath) or out("warn", "File $file cannot be moved to $newpath. : $!");
 		}
 	} elsif($sortby eq "COPY") {
 		if(-d $file) {
-			dircopy($file, $newpath) or out("warn", "File $file cannot be copied to $newpath. : $!");
+			$dryrun or dircopy($file, $newpath) or out("warn", "File $file cannot be copied to $newpath. : $!");
 		} else {
-			copy($file, $newpath) or out("warn", "File $file cannot be copied to $newpath. : $!");
+			$dryrun or copy($file, $newpath) or out("warn", "File $file cannot be copied to $newpath. : $!");
 		}
 	} elsif($sortby eq "PLACE-SYMLINK") {
-		symlink($file, $newpath) or out("warn", "File $file cannot be symlinked to $newpath. : $!");
+		$dryrun or symlink($file, $newpath) or out("warn", "File $file cannot be symlinked to $newpath. : $!");
 	} elsif($sortby eq "PLACE-HARDLINK") {
-		link($file,$newpath) or out("warn", "File $file cannot be hardlinked to $newpath. : $!");
+		$dryrun or link($file,$newpath) or out("warn", "File $file cannot be hardlinked to $newpath. : $!");
 	}
 	# have moved now link
 	if($sortby eq "MOVE-AND-LEAVE-SYMLINK-BEHIND") {
-		symlink($newpath, $file) or out("warn", "File $newpath cannot be symlinked to $file. : $!");
+		$dryrun or symlink($newpath, $file) or out("warn", "File $newpath cannot be symlinked to $file. : $!");
 	}
 	return $retval;
 }
@@ -1592,19 +1616,19 @@ sub move_a_season {
 		out("warn", "SKIP: File $newpath already exists, skipping.\n") unless($sortby eq "COPY" || $sortby eq "PLACE-SYMLINK");
 		return;
 	}
-	out("std", "$sortby SEASON: $file to $newpath\n");
+	out("std", "$dryrun$sortby SEASON: $file sorting $file --to--> $newpath\n");
 	out("verbose", "$sortby: sorting directory to: $newpath\n");
 	if($sortby eq "MOVE" || $sortby eq "MOVE-AND-LEAVE-SYMLINK-BEHIND") {
-		dirmove($file, "$newpath") or out("warn", "$show cannot be moved to $show/$seasontitle$series: $!");
+		$dryrun or dirmove($file, "$newpath") or out("warn", "$show cannot be moved to $show/$seasontitle$series: $!");
 	} elsif($sortby eq "COPY") {
-		dircopy($file, "$newpath") or out("warn", "$show cannot be copied to $show/$seasontitle$series: $!");
+		$dryrun or dircopy($file, "$newpath") or out("warn", "$show cannot be copied to $show/$seasontitle$series: $!");
 	} elsif($sortby eq "PLACE-SYMLINK") {
-		symlink($file, $newpath) or out("warn", "File $file cannot be symlinked to $newpath. : $!");
+		$dryrun or symlink($file, $newpath) or out("warn", "File $file cannot be symlinked to $newpath. : $!");
 	} elsif($sortby eq "PLACE-HARDLINK") {
-		link($file,$newpath) or out("warn", "File $file cannot be hardlinked to $newpath. : $!");
+		$dryrun or link($file,$newpath) or out("warn", "File $file cannot be hardlinked to $newpath. : $!");
 	}
 	if($sortby eq "MOVE-AND-LEAVE-SYMLINK-BEHIND") {
-		symlink($newpath, $file) or out("warn", "File $newpath cannot be symlinked to $file. : $!");
+		$dryrun or symlink($newpath, $file) or out("warn", "File $newpath cannot be symlinked to $file. : $!");
 	}
 }
 
@@ -1735,12 +1759,14 @@ sub sort_movie {
 
 	$mdir = path($moviedir.$dest);
 	out("std", "INFO: Making directory: $mdir\n") unless(-e $mdir);
-	make_path($mdir);
+	$dryrun or make_path($mdir);
 	if(sort_file($file, $moviedir.$dest, "MOVIE") eq "TRUE") {
 		# if the movie was sorted...
 		# download images
-		out("std", "INFO: Fetching movie images\n");
-		if($fetchmovieimages ne "FALSE") {
+		if($dryrun) {
+			out("std", "DRYRUN: not downloading movie images.\n");
+		} elsif($fetchmovieimages ne "FALSE") {
+			out("std", "INFO: Fetching movie images\n");
 			foreach my $image (keys %$img) {
 				my $status;
 				eval {
