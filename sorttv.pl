@@ -1771,7 +1771,7 @@ sub match_and_sort_movie {
 				}
 			} else {
 				# choose year to use
-				my $yeartouse = defined $year ? $year : defined $released_year ? $released_year : "";
+				my $yeartouse = $year ? $year : $released_year ? $released_year : "";
 				my $img = ${$$mlistref{$movie}}{"images"}{"image"};
 				sort_movie($file, $movietitle, $yeartouse, $ext, $img);
 				return "TRUE";
