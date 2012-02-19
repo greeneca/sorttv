@@ -18,6 +18,8 @@
 # Patrick Cole - z@amused.net
 # Martin Guillon - farfromrefug
 # red_five - xbmc forum
+# Fox - xbmc forum
+# TechLife - xbmc forum
 #
 # Please goto the xbmc forum to discuss SortTV:
 # http://forum.xbmc.org/showthread.php?t=75949
@@ -1154,15 +1156,15 @@ sub extract_archives {
 				$over = "-";
 			}
 
-			if(num_found_in_list(system("rar e -o$over '$arfile' '$dest'"), @errors) eq "FALSE") {
+			if(num_found_in_list(system("rar e -o$over \"$arfile\" \"$dest\""), @errors) eq "FALSE") {
 				out("std", "RAR: extracting $arfile into $dest\n");
-			} elsif(num_found_in_list(system("unrar e -o$over '$arfile' '$dest'"), @errors) eq "FALSE") {
+			} elsif(num_found_in_list(system("unrar e -o$over \"$arfile\" \"$dest\""), @errors) eq "FALSE") {
 				out("std", "UNRAR: extracting $arfile into $dest\n");
-			} elsif(num_found_in_list(system("7z e -y '$arfile' -o'$dest'"), @errors) eq "FALSE") {
+			} elsif(num_found_in_list(system("7z e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
 				out("std", "7ZIP: extracting $arfile into $dest\n");
-			} elsif(num_found_in_list(system("7za e -y '$arfile' -o'$dest'"), @errors) eq "FALSE") {
+			} elsif(num_found_in_list(system("7za e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
 				out("std", "7ZIP: extracting $arfile into $dest\n");
-			} elsif(num_found_in_list(system("C:\\Program Files\\7-Zip\\7z.exe e -y '$arfile' -o'$dest'"), @errors) eq "FALSE") {
+			} elsif(num_found_in_list(system("C:\\Program Files\\7-Zip\\7z.exe e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
 				out("std", "7ZIP: extracting $arfile into $dest\n");
 			} else {
 				out("std", "WARN: the rar / 7zip program could not be found, not decompressing $arfile\n");
@@ -1174,23 +1176,23 @@ sub extract_archives {
 				$over = "-n";
 			}
 
-			if(num_found_in_list(system("unzip $over '$arfile' -d '$dest'"), @errors) eq "FALSE") {
+			if(num_found_in_list(system("unzip $over \"$arfile\" -d \"$dest\""), @errors) eq "FALSE") {
 				out("std", "RAR: extracting $arfile into $dest\n");
-			} elsif(num_found_in_list(system("7z e -y '$arfile' -o'$dest'"), @errors) eq "FALSE") {
+			} elsif(num_found_in_list(system("7z e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
 				out("std", "7ZIP: extracting $arfile into $dest\n");
-			} elsif(num_found_in_list(system("7za e -y '$arfile' -o'$dest'"), @errors) eq "FALSE") {
+			} elsif(num_found_in_list(system("7za e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
 				out("std", "7ZIP: extracting $arfile into $dest\n");
-			} elsif(num_found_in_list(system("C:\\Program Files\\7-Zip\\7z.exe e -y '$arfile' -o'$dest'"), @errors) eq "FALSE") {
+			} elsif(num_found_in_list(system("C:\\Program Files\\7-Zip\\7z.exe e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
 				out("std", "7ZIP: extracting $arfile into $dest\n");
 			} else {
 				out("std", "WARN: the unzip / 7zip program could not be found, not decompressing $arfile\n");
 			}
 		} elsif($arfile =~ /.*\.(?:7z|gz|bz2)$/) {
-			if(num_found_in_list(system("7z e -y '$arfile' -o'$dest'"), @errors) eq "FALSE") {
+			if(num_found_in_list(system("7z e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
 				out("std", "7ZIP: extracting $arfile into $dest\n");
-			} elsif(num_found_in_list(system("7za e -y '$arfile' -o'$dest'"), @errors) eq "FALSE") {
+			} elsif(num_found_in_list(system("7za e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
 				out("std", "7ZIP: extracting $arfile into $dest\n");
-			} elsif(num_found_in_list(system("C:\\Program Files\\7-Zip\\7z.exe e -y '$arfile' -o'$dest'"), @errors) eq "FALSE") {
+			} elsif(num_found_in_list(system("C:\\Program Files\\7-Zip\\7z.exe e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
 				out("std", "7ZIP: extracting $arfile into $dest\n");
 			} else {
 				out("std", "WARN: the 7zip program could not be found, not decompressing $arfile\n");
