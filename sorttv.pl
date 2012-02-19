@@ -553,6 +553,7 @@ sub sort_other {
 	my ($msg, $destdir, $file) = @_;
 	my $newname = $file;
 	$newname =~ s/\Q$sortdir\E//;
+	$newname = escape_myfilename($newname);
 	if($flattennonepisodefiles eq "FALSE") {
 		my $dirs = path($newname);
 		my $filename = filename($newname);
@@ -562,7 +563,7 @@ sub sort_other {
 		}
 		$newname = $dirs . $filename;
 	} else { # flatten
-		$newname = escape_myfilename($newname);
+		$newname =~ s/[\\\/]/-/g;
 	}
 
 	sort_file($file, $destdir . $newname, $msg);
@@ -1011,9 +1012,9 @@ sub path {
 sub escape_myfilename {
 	my ($name) = @_;
 	if($^O =~ /MSWin/ || $windowsnames eq "TRUE") {
-		$name =~ s/[\\\/:*?\"<>|]/-/g;
+		$name =~ s/[:*?\"<>|]/-/g;
 	} else {
-		$name =~ s/[\\\/\"<>|]/-/g;
+		$name =~ s/[\"<>|]/-/g;
 	}
 	return $name;
 }
