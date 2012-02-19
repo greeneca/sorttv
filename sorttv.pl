@@ -69,6 +69,7 @@ my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $need
 my $dryrun = "";
 my $seasontitle = "Season ";
 my $sortby = "MOVE";
+my $duplicateimages = "SYMLINK";
 my $sortolderthandays = my $poll = my $verbose = 0;
 my $ifexists = "SKIP";
 my $renameformat = "[SHOW_NAME] - [EP1][EP_NAME1]";
@@ -136,6 +137,7 @@ my @optionlist = (
 	"fetch-tv-images|fetch-images|fi=s" => \$fetchimages,
 	"fetch-movie-images|fi=s" => \$fetchmovieimages,
 	"images-format|im=s" => \$imagesformat,
+	"duplicate-images|csi=s" => \$duplicateimages,
 	"require-show-directories-already-exist|rs=s" => \$needshowexist,
 	"force-windows-compatible-filenames|fw=s" => \$windowsnames,
 	"rename-tv-format|rename-format|rf=s" => \$renameformat,
@@ -261,9 +263,9 @@ my ($showname, $year, $series, $episode, $pureshowname) = "";
 	showhelp() if $help or $man;
 
 	# ensure at least one input and one output
-	if((!defined($sortdir) && !defined(@filestosort)) || (!defined($tvdir) && !defined($moviedir) && !defined($musicdir) && !defined($miscdir))) {
+	if((!defined($sortdir) && ! scalar @filestosort) || (!defined($tvdir) && !defined($moviedir) && !defined($musicdir) && !defined($miscdir))) {
 		out("warn", "Incorrect usage or configuration (missing sort or sort-to directories)\n");
-		out("warn", "run 'perl sorttv.pl --help' for more information about how to use SortTV");
+		out("warn", "run 'perl sorttv.pl --help' for more information about how to use SortTV\n");
 		exit;
 	}
 
@@ -817,6 +819,11 @@ OPTIONS:
 	Downloaded images are copied into the sort-to (destination) directory.
 	If not specified, TRUE
 
+--duplicate-images=[SYMLINK|COPY]
+	Duplicate images can be symlinked or copied. For example TV season images get placed in the main directory, and in season subdirectories.
+	The SYMLINK option is recommended. If symlinks are not available (for example, on Windows), then they will be copied.
+	If not specified, SYMLINK.
+
 --if-file-exists=[SKIP|OVERWRITE]
 	What to do if a file already exists in the destination
 	If not specified, SKIP
@@ -1315,10 +1322,23 @@ sub fetchshowimages {
 	copy ("$scriptpath/.cache/$fanart", "$newshowdir/fanart.jpg") if $fanart && -e "$scriptpath/.cache/$fanart";
 	copy ("$scriptpath/.cache/$banner", "$newshowdir/banner.jpg") if $banner && -e "$scriptpath/.cache/$banner";
 	copy ("$scriptpath/.cache/$poster", "$newshowdir/poster.jpg") if $poster && -e "$scriptpath/.cache/$poster";
-	my $ok = eval{symlink "$newshowdir/poster.jpg", "$newshowdir/folder.jpg" if $poster && -e "$scriptpath/.cache/$poster" && $imagesformat eq "POSTER";};
-	if(!defined $ok) {copy "$newshowdir/poster.jpg", "$newshowdir/folder.jpg" if $poster && -e "$scriptpath/.cache/$poster" && $imagesformat eq "POSTER";};
-	$ok = eval{symlink "$newshowdir/banner.jpg", "$newshowdir/folder.jpg" if $banner && -e "$scriptpath/.cache/$banner" && $imagesformat eq "BANNER";};
-	if(!defined $ok) {copy "$newshowdir/banner.jpg", "$newshowdir/folder.jpg" if $banner && -e "$scriptpath/.cache/$banner" && $imagesformat eq "BANNER";};
+	# if configured to symlink
+	my $ok = 1;
+	if($duplicateimages eq "SYMLINK") {
+		if ($poster && -e "$scriptpath/.cache/$poster" && $imagesformat eq "POSTER") {
+			$ok = eval{symlink "$newshowdir/poster.jpg", "$newshowdir/folder.jpg";};
+		} elsif ($banner && -e "$scriptpath/.cache/$banner" && $imagesformat eq "BANNER") {
+			$ok = eval{symlink "$newshowdir/banner.jpg", "$newshowdir/folder.jpg";};
+		}
+	}
+	# if not symlink, or symlink failed
+	if($duplicateimages ne "SYMLINK" || !defined $ok) {
+		if($poster && -e "$scriptpath/.cache/$poster" && $imagesformat eq "POSTER") {
+			copy "$newshowdir/poster.jpg", "$newshowdir/folder.jpg";
+		} elsif ($banner && -e "$scriptpath/.cache/$banner" && $imagesformat eq "BANNER") {
+			copy "$newshowdir/banner.jpg", "$newshowdir/folder.jpg";
+		}
+	}
 }
 
 sub fetchseasonimages {
@@ -1333,8 +1353,17 @@ sub fetchseasonimages {
 	my $snum = sprintf("%02d", $season);
 	copy ("$scriptpath/.cache/$banner", "$newshowdir/season${snum}.jpg") if $banner && -e "$scriptpath/.cache/$banner" && $imagesformat eq "POSTER";
 	copy ("$scriptpath/.cache/$bannerwide", "$newshowdir/season${snum}.jpg") if $bannerwide && -e "$scriptpath/.cache/$bannerwide" && $imagesformat eq "BANNER";
-	my $ok = eval{symlink "$newshowdir/season$snum.jpg", "$seasondir/folder.jpg" if -e "$newshowdir/season$snum.jpg";};
-	if(!defined $ok) {copy "$newshowdir/season$snum.jpg", "$seasondir/folder.jpg" if -e "$newshowdir/season$snum.jpg";};
+	my $ok = 1;
+	if (-e "$newshowdir/season$snum.jpg") {
+		# if configured to symlink
+		if($duplicateimages eq "SYMLINK") {
+			$ok = eval{symlink "$newshowdir/season$snum.jpg", "$seasondir/folder.jpg";};
+		}
+		# if not symlink, or symlink failed
+		if($duplicateimages ne "SYMLINK" || !defined $ok) {
+			copy "$newshowdir/season$snum.jpg", "$seasondir/folder.jpg";
+		}
+	}
 }
 
 sub fetchepisodeimage {

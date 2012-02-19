@@ -311,10 +311,15 @@ OPTIONS:
 		Downloaded images are copied into the sort-to (destination) directory.
 		If not specified, TRUE
 
-	--images-format=POSTER
+	--images-format=[POSTER/BANNER]
 		Sets the image format to use, poster or banner.
 		POSTER/BANNER
 		if not specified, POSTER
+
+	--duplicate-images=[SYMLINK|COPY]
+		Duplicate images can be symlinked or copied. For example TV season images get placed in the main directory, and in season subdirectories.
+		The SYMLINK option is recommended. If symlinks are not available (for example, on Windows), then they will be copied.
+		If not specified, SYMLINK.
 
 	--if-file-exists=[SKIP|OVERWRITE]
 		What to do if a file already exists in the destination
