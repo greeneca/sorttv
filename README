@@ -340,6 +340,10 @@ OPTIONS:
 		Check for newer versions of SortTV
 		If not specified, TRUE
 
+	--display-license=[TRUE|FALSE]
+		Shows the license and some information about donations when the program starts
+		If not specified, TRUE
+
 	--no-network
 		Disables all the network enabled features such as:
 			Disables notifying xbmc

@@ -32,6 +32,7 @@
 # 
 # Please consider a $5 donation if you find this program helpful.
 # http://sourceforge.net/donate/index.php?group_id=330009
+# If you prefer to donate via bitcoin, contact me for details
 
 # This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -66,7 +67,7 @@ my ($newshows, $new, $log);
 my @musicext = ("aac","aif","iff","m3u","mid","midi","mp3","mpa","ra","ram","wave","wav","wma","ogg","oga","ogx","spx","flac","m4a", "pls");
 my (@whitelist, @blacklist, @deletelist, @sizerange, @filestosort);
 my (%showrenames, %showtvdbids);
-my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = "TRUE";
+my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = my $displaylicense = "TRUE";
 my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = my $tvdbrequired = "FALSE";
 my $dryrun = "";
 my $seasontitle = "Season ";
@@ -132,6 +133,7 @@ my @optionlist = (
 			}
 		},
 	"tvdb-episode-name-required|nreq=s" => \$tvdbrequired,
+	"display-license|dl=s" => \$displaylicense,
 	"log-file|o=s" => \$logfile,
 	"fetch-show-title|fst=s" => \$tvdbrename,
 	"rename-media|rename-episodes|rn=s" => \$rename,
@@ -262,6 +264,8 @@ my ($showname, $year, $series, $episode, $pureshowname) = "";
 	# "--opt" or "--opt=value" or "opt=value" or "opt value" or "-opt value" etc
 	process_args();
 
+	display_license() if $displaylicense eq "TRUE";
+
 	# we stop the script and show the help if help or man option was used
 	showhelp() if $help or $man;
 
@@ -382,6 +386,13 @@ sub display_sortdirs {
 	out("std", "\tmovies into $moviedir\n") if $moviedir;
 	out("std", "\tmusic into $musicdir\n") if $musicdir;
 	out("std", "\teverything else into $miscdir\n") if $miscdir;
+}
+
+# displays the license and asks for a donation
+sub display_license {
+	out("std", "SortTV is copyleft free open source software.\nYou are free to make modifications and share, as defined by version 3 of the GNU General Public License\n");
+	out("std", "If you find this software helpful, \$5 donations are welcomed: http://sourceforge.net/donate/index.php?group_id=330009\n");
+	out("std", "~" x 6,"\n");
 }
 
 # used to check that a dir exists, then set the corresponding variable
@@ -845,6 +856,10 @@ OPTIONS:
 
 --check-for-updates=[TRUE|FALSE]
 	Check for newer versions of SortTV
+	If not specified, TRUE
+
+--display-license=[TRUE|FALSE]
+	Shows the license and some information about donations when the program starts
 	If not specified, TRUE
 
 --no-network
