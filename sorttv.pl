@@ -697,6 +697,7 @@ OPTIONS:
 	[EP1]: "S01E01"
 	[EP2]: "1x1"
 	[EP3]: "1x01"
+	[EP4]: "01" (Episode number only)
 	[EP_NAME1]: " - Episode Title"
 	[EP_NAME2]: ".Episode Title"
 	[QUALITY]: " HD" (or " SD") - extracted from original file name
@@ -1557,12 +1558,14 @@ sub move_an_ep {
 		my $sname = resolve_show_name($pureshowname);
 		my $ep2 = sprintf("%dx%d", $series, $episode);
 		my $ep3 = sprintf("%dx%02d", $series, $episode);
+		my $ep4 = sprintf("%02d", $episode);
 		# create the new file name
 		$newfilename = $renameformat;
 		$newfilename =~ s/\[SHOW_NAME]/$sname/ig;
 		$newfilename =~ s/\[EP1]/$ep1/ig;
 		$newfilename =~ s/\[EP2]/$ep2/ig;
 		$newfilename =~ s/\[EP3]/$ep3/ig;
+		$newfilename =~ s/\[EP4]/$ep4/ig;
 		$newfilename =~ s/\[EP_NAME\d]/$eptitle/ig;
 		if($newfilename =~ /\[QUALITY]/i) {
 			my $quality = extract_quality($file);
