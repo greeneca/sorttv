@@ -326,6 +326,11 @@ OPTIONS:
 		What to do if a file already exists in the destination
 		If not specified, SKIP
 
+	--tvdb-episode-name-required=[TRUE|FALSE]
+		Only sort tv episodes if the episode name was available from thetvdb
+		Note: directories may still be created in the destination, even if the file is skipped due to this rule
+		If not specified, FALSE
+
 	--extract-compressed-before-sorting=[TRUE|FALSE]
 		Extracts the contents of archives (.zip, .rar) into the directory-to-sort while sorting
 		If "rar" and "unzip" programs are available they are used.

@@ -67,7 +67,7 @@ my @musicext = ("aac","aif","iff","m3u","mid","midi","mp3","mpa","ra","ram","wav
 my (@whitelist, @blacklist, @deletelist, @sizerange, @filestosort);
 my (%showrenames, %showtvdbids);
 my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = "TRUE";
-my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = "FALSE";
+my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = my $tvdbrequired = "FALSE";
 my $dryrun = "";
 my $seasontitle = "Season ";
 my $sortby = "MOVE";
@@ -131,13 +131,14 @@ my @optionlist = (
 				$showtvdbids{$key} = $val;
 			}
 		},
+	"tvdb-episode-name-required|nreq=s" => \$tvdbrequired,
 	"log-file|o=s" => \$logfile,
 	"fetch-show-title|fst=s" => \$tvdbrename,
 	"rename-media|rename-episodes|rn=s" => \$rename,
 	"tv-lookup-language|lookup-language|lang=s" => \$tvdblanguage,
 	"movie-lookup-language|lang=s" => \$movielanguage,
 	"fetch-tv-images|fetch-images|fi=s" => \$fetchimages,
-	"fetch-movie-images|fi=s" => \$fetchmovieimages,
+	"fetch-movie-images|fmi=s" => \$fetchmovieimages,
 	"images-format|im=s" => \$imagesformat,
 	"duplicate-images|csi=s" => \$duplicateimages,
 	"require-show-directories-already-exist|rs=s" => \$needshowexist,
@@ -831,6 +832,11 @@ OPTIONS:
 --if-file-exists=[SKIP|OVERWRITE]
 	What to do if a file already exists in the destination
 	If not specified, SKIP
+
+--tvdb-episode-name-required=[TRUE|FALSE]
+	Only sort tv episodes if the episode name was available from thetvdb
+	Note: directories may still be created in the destination, even if the file is skipped due to this rule
+	If not specified, FALSE
 
 --extract-compressed-before-sorting=[TRUE|FALSE]
 	Extracts the contents of archives (.zip, .rar) into the directory-to-sort while sorting
@@ -1537,8 +1543,18 @@ sub move_an_ep {
 			} else {
 				my $showtitle = substitute_tvdb_id(resolve_show_name($pureshowname));
 				# if that episode exists
+				my $tvdbname;
 				eval { # try
-					$name = $tvdb->getEpisodeName($showtitle, $series, $episode);
+					$tvdbname = $tvdb->getEpisodeName($showtitle, $series, $episode);
+				};
+				if($tvdbname) {
+					$name = $tvdbname;
+				} else {
+					# if the episode name is required, and not available, skip this file
+					if($tvdbrequired eq "TRUE") {
+						out("warn", "SKIP: Failed to retrieve episode name from thetvdb\n");
+						return;
+					}
 				}
 			}
 			my $format = $1;
