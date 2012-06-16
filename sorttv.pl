@@ -444,7 +444,9 @@ sub sort_directory {
 		if(-l $file) {
 			if($removesymlinks eq "TRUE") {
 				out("std", "DELETE: Removing symlink: $file\n");
-				unlink($file) or out("warn", "WARN: Could not delete symlink $file: $!\n");
+				unless ($dryrun) {
+					unlink($file) or out("warn", "WARN: Could not delete symlink $file: $!\n");
+				}
 			}
 			# otherwise file is a symlink, ignore
 		} elsif(-d $file && $treatdir eq "IGNORE") {
@@ -1087,8 +1089,8 @@ sub check_lists {
 	foreach my $todelete (@deletelist) {
 		if($file =~ /$todelete/) {
 			out("std", "DELETE: Matches delete list: $filepath\n");
-			unless(unlink($filepath)) {
-				out("warn", "WARN: File could not be deleted: $!");
+			unless($dryrun) {
+				unlink($filepath) or out("warn", "WARN: File could not be deleted: $!");
 			}
 			return "NEXT";
 		}
