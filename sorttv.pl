@@ -20,6 +20,7 @@
 # red_five - xbmc forum
 # Fox - xbmc forum
 # TechLife - xbmc forum
+# frozenesper - xbmc forum
 #
 # Please goto the xbmc forum to discuss SortTV:
 # http://forum.xbmc.org/showthread.php?t=75949
