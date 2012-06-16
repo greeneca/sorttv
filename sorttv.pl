@@ -1750,6 +1750,7 @@ sub match_and_sort_movie {
 
 	out("verbose",  "INFO: Looking for movie matching $title using the movie db\n");
 	my $result = $tmdb->Movie_search(remdot($title));
+	$result = Encode::encode("utf8", $result);
 	unless($result) {
 		return "FALSE";
 	}
