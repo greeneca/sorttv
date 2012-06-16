@@ -1155,7 +1155,7 @@ sub num_found_in_list {
 sub extract_archives {
 	my ($escapedsortd, $sortd) = @_;
 	my $over = "";
-	my @errors = (-1, 32512, 256);
+	my @errors = (-1, 32512, 256, 768); # 768: CRC error
 	foreach my $arfile (bsd_glob($escapedsortd.'*.{rar,zip,7z,gz,bz2}')) {
 		my $dest = filename($sortd) . "/" . $arfile . " (extracted by SortTV)";
 		if(-e $dest) {
@@ -1189,7 +1189,7 @@ sub extract_archives {
 			} elsif(num_found_in_list(system("C:\\Program Files\\7-Zip\\7z.exe e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
 				out("std", "7ZIP: extracting $arfile into $dest\n");
 			} else {
-				out("std", "WARN: the rar / 7zip program could not be found, not decompressing $arfile\n");
+				out("std", "WARN: the rar / 7zip program could not be found (or an error occurred), not decompressing $arfile\n");
 			}
 		} elsif($arfile =~ /.*\.zip$/) {
 			if($ifexists eq "OVERWRITE") {
@@ -1207,7 +1207,7 @@ sub extract_archives {
 			} elsif(num_found_in_list(system("C:\\Program Files\\7-Zip\\7z.exe e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
 				out("std", "7ZIP: extracting $arfile into $dest\n");
 			} else {
-				out("std", "WARN: the unzip / 7zip program could not be found, not decompressing $arfile\n");
+				out("std", "WARN: the unzip / 7zip program could not be found (or an error occurred), not decompressing $arfile\n");
 			}
 		} elsif($arfile =~ /.*\.(?:7z|gz|bz2)$/) {
 			if(num_found_in_list(system("7z e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
@@ -1217,7 +1217,7 @@ sub extract_archives {
 			} elsif(num_found_in_list(system("C:\\Program Files\\7-Zip\\7z.exe e -y \"$arfile\" -o\"$dest\""), @errors) eq "FALSE") {
 				out("std", "7ZIP: extracting $arfile into $dest\n");
 			} else {
-				out("std", "WARN: the 7zip program could not be found, not decompressing $arfile\n");
+				out("std", "WARN: the 7zip program could not be found (or an error occurred), not decompressing $arfile\n");
 			}
 		}
 	}
