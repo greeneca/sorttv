@@ -66,8 +66,10 @@ my ($sortdir, $tvdir, $miscdir, $musicdir, $moviedir, $matchtype);
 my ($xbmcoldwebserver, $xbmcaddress);
 my ($newshows, $new, $log);
 my @musicext = ("aac","aif","iff","m3u","mid","midi","mp3","mpa","ra","ram","wave","wav","wma","ogg","oga","ogx","spx","flac","m4a", "pls");
-my @nonmediaext = ();
-my (@whitelist, @blacklist, @deletelist, @sizerange, @filestosort);
+my @videoext = ("avi","mpg","mpe","mpeg-1","mpeg-2","m4v","mkv","mov","mp4","mpeg","ogm","wmv","divx","dvr-ms","3gp","m1s","mpa","mp2","m2a","mp2v","m2v","m2s","qt","asf","asx","wmx","rm","ram","rmvb","3g2","flv","swf","aepx","ale","avp","avs","bdm","bik","bin","bsf","camproj","cpi","dat","dmsm","dream","dvdmedia","dzm","dzp","edl","f4v","fbr","fcproject","hdmov","imovieproj","ism","ismv","m2p","mod","moi","mts","mxf","ogv","pds","prproj","psh","r3d","rcproject","scm","smil","sqz","stx","swi","tix","trp","ts","veg","vf","vro","webm","wlmp","wtv","xvid","yuv","3gp2","3gpp","3p2","aaf","aep","aetx","ajp","amc","amv","amx","arcut","arf","avb","axm","bdmv","bdt3","bmk","camrec","cine","clpi","cmmp","cmmtpl","cmproj","cmrec","cst","d2v","d3v","dce","dck","dcr","dcr","dir","dmb","dmsd","dmsd3d","dmss","dpa","dpg","dv","dv-avi","dvr","dvx","dxr","dzt","evo","eye","f4p","fbz","fcp","flc","flh","fli","gfp","gts","hkm","ifo","imovieproject","ircp","ismc","ivf","ivr","izz","izzy","jts","jtv","m1pg","m21","m21","m2t","m2ts","m2v","mgv","mj2","mjp","mk3d","mnv","mp21","mp21","mpgindex","mpl","mpls","mpv","mqv","msdvd","mse","mswmm","mtv","mvd","mve","mvp","mvp","mvy","ncor","nsv","nuv","nvc","ogx","pgi","photoshow","piv","plproj","pmf","ppj","prel","pro","prtl","pxv","qtl","qtz","rcd","rdb","rec","rmd","rmp","rms","roq","rsx","rum","rv","rvl","sbk","scc","screenflow","seq","sfvidcap","siv","smi","smk","stl","svi","swt","tda3mt","tivo","tod","tp","tp0","tpd","tpr","tsp","tvs","usm","vc1","vcpf","vcv","vdo","vdr","vep","vfz","vgz","viewlet","vlab","vp6","vp7","vpj","vsp","wcp","wmd","wmmp","wmx","wp3","wpl","wvx","xej","xel","xesc","xfl","xlmv","zm1","zm2","zm3","zmv");
+my @subtitleext = ("ssa", "srt", "sub");
+my @imageext = ("jpg", "jpeg", "tbn");
+my (@whitelist, @blacklist, @deletelist, @sizerange, @filestosort, @nonmediaext);
 my (%showrenames, %showtvdbids);
 my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = my $displaylicense = "TRUE";
 my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = my $tvdbrequired = "FALSE";
@@ -454,16 +456,16 @@ sub sort_directory {
 			if(($nonep eq "FALSE" && -r $file && $moviedir) and ($filename =~ /(.*?)\s*-?\s*\(?\[?([12][0-9]{3})\)?\]?(?:BDRip|\[Eng]|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)*.*/i
 			|| $filename =~ /(.*?)(?:[[\]{}()]|\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)+.*?()/i
 			|| $filename =~ /(.*)()/i)) {
-			my $title = $1;
-			my $year = $2;
-			my $ext = $3;
-			$title =~ s/(?:\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5|[[\]{}()])//ig;
-			# at this point if it is not a known movie it is an "other"
-			out("verbose", "VERBOSE: Found movie directory and movie_move_folder is TRUE, moving entire directory!\n");
-			if(match_and_sort_movie($title, $year, $ext, $file) eq "TRUE") {
-				$nonep = "FALSE";
+				my $title = $1;
+				my $year = $2;
+				my $ext = $3;
+				$title =~ s/(?:\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5|[[\]{}()])//ig;
+				# at this point if it is not a known movie it is an "other"
+				out("verbose", "VERBOSE: Found movie directory and movie_move_folder is TRUE, moving entire directory!\n");
+				if(match_and_sort_movie($title, $year, $ext, $file) eq "TRUE") {
+					$nonep = "FALSE";
+				}	
 			}	
-		}	
 		}
 
 		if(-l $file) {
@@ -483,13 +485,13 @@ sub sort_directory {
 			# removes any empty directories from the to-sort directory and sub-directories 
 			finddepth(sub{rmdir},"$sortd");
 		
-		} elsif(-r $file && $musicdir && ismusic($filename) eq "TRUE") {
+		} elsif(-r $file && $musicdir && matches_type($filename, @musicext) eq "TRUE") {
 			#move to music folder if music
 			sort_other ("MUSIC", "$musicdir", $file);
-		} elsif(-r $file && isnonep($filename) eq "TRUE") { 
-			#if we have extensions defined that are not movie or tv shows, don't look them up on tvdb or a movie db, just move them to miscdir
-			out("verbose", "INFO: Moving '$filename' to $miscdir since extension is on nonep list\n");
-			sort_other ("NON-EPISODE", "$miscdir", $file);
+# 		} elsif(-r $file && isnonep($filename) eq "TRUE") { 
+# 			#if we have extensions defined that are not movie or tv shows, don't look them up on tvdb or a movie db, just move them to miscdir
+# 			out("verbose", "INFO: Moving '$filename' to $miscdir since extension is on nonep list\n");
+# 			sort_other ("NON-EPISODE", "$miscdir", $file);
 		# Regex for tv show season directory
 		} elsif($treatdir eq "AS_FILES_TO_SORT" && -d $file && $file =~ /.*\/(.*)(?:Season|Series|$seasontitle)\D?0*(\d+).*/i && $1) {
 			out("verbose", "INFO: Treating $file as directory to sort\n");
@@ -511,8 +513,8 @@ sub sort_directory {
 			}
 		
 		# Regex for tv show episode: S01E01 or 1x1 or 1 x 1 or 101 or [1x1] etc
-		
-		} elsif($filename =~ /(.*?)(?:\.|\s|-|_|\[)+[Ss]0*(\d+)(?:\.|\s|-|_)*[Ee]0*(\d+).*/
+		} elsif($tvdir && matches_type($filename, @videoext, @imageext, @subtitleext) and
+		($filename =~ /(.*?)(?:\.|\s|-|_|\[)+[Ss]0*(\d+)(?:\.|\s|-|_)*[Ee]0*(\d+).*/
 		# "Show/Season 1/S1E1.avi" or "Show/Season 1/1.avi" or "Show Season 1/101.avi" or "Show/Season 1/1x1.avi" or "Show Series 1 Episode 1.avi" etc
 		|| $dirsandfile =~ /(.*?)(?:\.|\s|\/|\\|-|\1)*(?:Season|Series|\Q$seasontitle\E)\D?0*(\d+)(?:\.|\s|\/|\\|-|\1)+[Ss]0*\2(?:\.|\s|-|_)*[Ee]0*(\d+).*/i
 		|| $dirsandfile =~ /(.*?)(?:\.|\s|\/|\\|-|\1)*(?:Season|Series|\Q$seasontitle\E)\D?0*(\d+)(?:\.|\s|\/|\\|-|\1)+\[?0*\2?\s*[xX-]?\s*0*(\d{1,2}).*/i
@@ -520,7 +522,7 @@ sub sort_directory {
 		#  not a date, but is 1x1 or 1-1
 		|| ($filename !~ /(\d{4}[-.]\d{1,2}[-.]\d{1,2})/ && $filename =~ /(.*)(?:\.|\s|-|_)+\[?0*(\d+)\s*[xX-]\s*0*(\d+).*/)
 		|| $filename =~ /(.*)(?:\.|\s|-|_)+0*(\d)(\d{2})(?:\.|\s).*/
-		|| ($matchtype eq "LIBERAL" && filename($file) =~ /(.*)(?:\.|\s|-|_)0*(\d+)\D*0*(\d+).*/)) {
+		|| ($matchtype eq "LIBERAL" && filename($file) =~ /(.*)(?:\.|\s|-|_)0*(\d+)\D*0*(\d+).*/))) {
 			$pureshowname = $1;
 			$pureshowname = fixpurename($pureshowname);
 			$showname = fixtitle($pureshowname);
@@ -546,8 +548,9 @@ sub sort_directory {
 				}
 			}
 		# match "Show - Episode title.avi" or "Show - [AirDate].avi"
-		} elsif( (($treatdir eq "AS_FILES_TO_SORT" && -d $file) || -f $file) && $lookupseasonep eq "TRUE" && (filename($file) =~ /(.*)(?:\.|\s)(\d{4}[-.]\d{1,2}[-.]\d{1,2}).*/
-		|| filename($file) =~ /(.*)-(.*)(?:\..*)/)) {
+		} elsif($tvdir && $lookupseasonep eq "TRUE" && matches_type($filename, @videoext, @imageext, @subtitleext) && 
+		(($treatdir eq "AS_FILES_TO_SORT" && -d $file) || -f $file) && 
+		(filename($file) =~ /(.*)(?:\.|\s)(\d{4}[-.]\d{1,2}[-.]\d{1,2}).*/ || filename($file) =~ /(.*)-(.*)(?:\..*)/)) {
 			$pureshowname = $1;
 			$showname = fixtitle($pureshowname);
 			my $episodetitle = fixdate($2);
@@ -578,7 +581,7 @@ sub sort_directory {
 			$nonep = "TRUE";
 		}
 		# Movie regex
-		if(($nonep eq "TRUE" && -r $file && $moviedir) and ($filename =~ /(.*?)\s*-?\s*\(?\[?([12][0-9]{3})\)?\]?(?:BDRip|\[Eng]|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)*.*(\.\w*)/i
+		if(($nonep eq "TRUE" && -r $file && $moviedir && matches_type($filename, @videoext, @imageext, @subtitleext)) and ($filename =~ /(.*?)\s*-?\s*\(?\[?([12][0-9]{3})\)?\]?(?:BDRip|\[Eng]|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)*.*(\.\w*)/i
 			|| $filename =~ /(.*?)(?:[[\]{}()]|\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)+.*?()(\.\w*)/i
 			|| $filename =~ /(.*)()(\.\w*)/i)) {
 			my $title = $1;
@@ -1093,10 +1096,11 @@ sub glob2pat {
 	return '^' . $globstr . '$';
 }
 
-# checks whether the file extension matches a known music format
-sub ismusic {
-	my ($file) = @_;
-	foreach my $ext (@musicext) {
+# checks whether the file extension matches a known format
+# this could be further optimised, by not copying the arrays in each time
+sub matches_type {
+	my ($file, @extensions) = @_;
+	foreach my $ext (@extensions) {
 		if($file =~ /.*\Q$ext\E$/) {
 			return "TRUE";
 		}
