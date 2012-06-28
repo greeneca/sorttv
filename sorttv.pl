@@ -72,7 +72,7 @@ my @imageext = ("jpg", "jpeg", "tbn");
 my (@whitelist, @blacklist, @deletelist, @sizerange, @filestosort, @nonmediaext);
 my (%showrenames, %showtvdbids);
 my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = my $displaylicense = "TRUE";
-my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = my $tvdbrequired = "FALSE";
+my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = my $tvdbrequired = my $sort_movie_dir = "FALSE";
 my $dryrun = "";
 my $seasontitle = "Season ";
 my $sortby = "MOVE";
@@ -88,8 +88,6 @@ my $imagesformat = "POSTER";
 my $scriptpath = dirname(rel2abs($0));
 my $logfile = "$scriptpath/sorttv.log";
 my $tvdblanguage = "en";
-my $movie_in_folder = "FALSE";
-my $movie_move_folder = "FALSE";
 my $movielanguage = "en";
 my $tvdb;
 my $tmdb;
@@ -228,7 +226,7 @@ my @optionlist = (
 			} else {
 				out("warn", "WARN: file $_[1] does not exist\n");
 			}
-			print "\@filestosort: @filestosort\n";
+			out("verbose", "\@filestosort: @filestosort\n");
 		},
 	"directory-to-sort|sort=s" => sub { set_directory($_[1], \$sortdir); },
 	"tv-directory|directory-to-sort-into|tvdir=s" => 
@@ -244,8 +242,7 @@ my @optionlist = (
 			}
 		},
 	"movie-directory|movie=s" => sub { set_directory($_[1], \$moviedir); },
-	"movie-in-folder|mfolder=s" => \$movie_in_folder,
-	"movie-move-folder|mmfolder=s" => \$movie_move_folder,
+	"sort-move-directories|mdsort=s" => \$sort_movie_dir,
 	"movie-language|mlang=s" => \$movielanguage,
 	"music-directory|music=s" => sub { set_directory($_[1], \$musicdir); },
 	"music-extension|me=s" => \@musicext,
@@ -432,8 +429,6 @@ sub sort_directory {
 	FILE: foreach my $file (bsd_glob($escapedsortd.'*'), @files) {
 		$showname = "";
 		my $nonep = "FALSE";
-		my $dirsandfile = $file;
-		$dirsandfile =~ s/\Q$sortdir\E//;
 		my $filename = filename($file);
 		out("verbose", "INFO: Currently checking file: $filename\n");
 		# check white and black lists
@@ -449,25 +444,7 @@ sub sort_directory {
 			out("std", "SKIP: $file is newer than $sortolderthandays days old.\n");
 			next FILE;
 		}
-		#If user wants folder moved if it matches Movie name
-		#TODO descend into movie directory, rename file with correct extenstion (avi, mp4) etc... unsure how to do this without creating a whole 'nother loop and testing all files
-		if(-d $file && $movie_move_folder eq "TRUE"){	
-			
-			if(($nonep eq "FALSE" && -r $file && $moviedir) and ($filename =~ /(.*?)\s*-?\s*\(?\[?([12][0-9]{3})\)?\]?(?:BDRip|\[Eng]|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)*.*/i
-			|| $filename =~ /(.*?)(?:[[\]{}()]|\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)+.*?()/i
-			|| $filename =~ /(.*)()/i)) {
-				my $title = $1;
-				my $year = $2;
-				my $ext = $3;
-				$title =~ s/(?:\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5|[[\]{}()])//ig;
-				# at this point if it is not a known movie it is an "other"
-				out("verbose", "VERBOSE: Found movie directory and movie_move_folder is TRUE, moving entire directory!\n");
-				if(match_and_sort_movie($title, $year, $ext, $file) eq "TRUE") {
-					$nonep = "FALSE";
-				}	
-			}	
-		}
-
+		# treat symlinks separately
 		if(-l $file) {
 			if($removesymlinks eq "TRUE") {
 				out("std", "DELETE: Removing symlink: $file\n");
@@ -476,45 +453,78 @@ sub sort_directory {
 				}
 			}
 			# otherwise file is a symlink, ignore
+		# ignore directories, if so configured
 		} elsif(-d $file && $treatdir eq "IGNORE") {
 			out("verbose", "INFO: Ignoring Dir: $file\n");
 			# ignore directories
-		} elsif(-d $file && $treatdir eq "RECURSIVELY_SORT_CONTENTS") {
-			out("verbose", "INFO: Entering into directory or compressed file $file\n");
-			sort_directory("$file/");
-			# removes any empty directories from the to-sort directory and sub-directories 
-			finddepth(sub{rmdir},"$sortd");
+		# here we attempt to sort each type of media
+		# movie should come last since it will attempt to find a matching movie name on tmdb
+		} else {
+			# try to find a matching sort method
+			unless(is_music($file, $filename) 
+			|| is_season_directory($file, $filename) 
+			|| is_tv_episode($file, $filename)
+			|| is_movie($file, $filename)) {
+				# if it does not match the requirements for any sort method,
+				# either recursively sort each directory, or the file is an "other" 
+				if(-d $file && $treatdir eq "RECURSIVELY_SORT_CONTENTS") {
+					out("verbose", "INFO: Entering into directory or compressed file $file\n");
+					sort_directory("$file/");
+					# removes any empty directories from the to-sort directory and sub-directories 
+					finddepth(sub{rmdir},"$sortd");
+				} elsif($miscdir && $tvdir ne "KEEP_IN_SAME_DIRECTORIES") {
+					# move anything else
+					sort_other ("OTHER", "$miscdir", $file);
+				}
+			}
+		}
+	}
+}
+
+sub is_video_to_be_sorted {
+	my ($file, $filename) = @_;
+	return ($treatdir eq "AS_FILES_TO_SORT" and -d $file) || (-f $file and matches_type($filename, @videoext, @imageext, @subtitleext));
+}
+
+sub is_music_to_be_sorted {
+	my ($file, $filename) = @_;
+	return -f $file and matches_type($filename, @musicext);
+}
+
+# checks whether this is a movie to be sorted
+# if it is, this kicks of the sorting process
+sub is_movie {
+	my ($file, $filename) = @_;
+	# conditions for it to be checked
+	if($moviedir && (is_video_to_be_sorted($file, $filename) || (-d $file and $sort_movie_dir eq "TRUE"))) {
+		# check regex
+		if($filename =~ /(.*?)\s*-?\s*\(?\[?([12][0-9]{3})\)?\]?(?:BDRip|\[Eng]|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)*.*(\.\w*)?/i
+		|| $filename =~ /(.*?)(?:[[\]{}()]|\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)+.*?()(\.\w*)?/i
+		|| $filename =~ /(.*)()(\.\w*)/i || $filename =~ /(.*)()()/i) {
+			my $title = $1;
+			my $year = $2;
+			my $ext = $3;
+			$title =~ s/(?:\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5|[[\]{}()])//ig;
+			# at this point if it is not a known movie it is an "other"
+			if(match_and_sort_movie($title, $year, $ext, $file) eq "TRUE") {
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+# checks whether this is a TV episode to be sorted
+# if it is, this kicks of the sorting process
+sub is_tv_episode {
+	my ($file, $filename) = @_;
+	# conditions for it to be checked
+	if($tvdir && is_video_to_be_sorted($file, $filename)) {
+		# check regex
+		my $dirsandfile = $file;
+		$dirsandfile =~ s/\Q$sortdir\E//;
 		
-		} elsif(-r $file && $musicdir && matches_type($filename, @musicext) eq "TRUE") {
-			#move to music folder if music
-			sort_other ("MUSIC", "$musicdir", $file);
-# 		} elsif(-r $file && isnonep($filename) eq "TRUE") { 
-# 			#if we have extensions defined that are not movie or tv shows, don't look them up on tvdb or a movie db, just move them to miscdir
-# 			out("verbose", "INFO: Moving '$filename' to $miscdir since extension is on nonep list\n");
-# 			sort_other ("NON-EPISODE", "$miscdir", $file);
-		# Regex for tv show season directory
-		} elsif($treatdir eq "AS_FILES_TO_SORT" && -d $file && $file =~ /.*\/(.*)(?:Season|Series|$seasontitle)\D?0*(\d+).*/i && $1) {
-			out("verbose", "INFO: Treating $file as directory to sort\n");
-			$pureshowname = $1;
-			if($seasondoubledigit eq "TRUE") {
-				$series = sprintf("%02d", $2);
-			} else {
-				$series = $2;
-			}
-			$showname = fixtitle($pureshowname);
-			# extract year if present, for example "Show (2011)"
-			if($pureshowname =~ /(.*)(?:\.|\s|-|\(|\[)*\(?((?:20|19)\d{2})(?:\)|\])?/) {
-				$year = $2;
-			} else {
-				$year = "";
-			}
-			if(move_series($pureshowname, $showname, $series, $year, $file) eq $REDO_FILE) {
-				redo FILE;
-			}
-		
-		# Regex for tv show episode: S01E01 or 1x1 or 1 x 1 or 101 or [1x1] etc
-		} elsif($tvdir && matches_type($filename, @videoext, @imageext, @subtitleext) and
-		($filename =~ /(.*?)(?:\.|\s|-|_|\[)+[Ss]0*(\d+)(?:\.|\s|-|_)*[Ee]0*(\d+).*/
+		if($filename =~ /(.*?)(?:\.|\s|-|_|\[)+[Ss]0*(\d+)(?:\.|\s|-|_)*[Ee]0*(\d+).*/
 		# "Show/Season 1/S1E1.avi" or "Show/Season 1/1.avi" or "Show Season 1/101.avi" or "Show/Season 1/1x1.avi" or "Show Series 1 Episode 1.avi" etc
 		|| $dirsandfile =~ /(.*?)(?:\.|\s|\/|\\|-|\1)*(?:Season|Series|\Q$seasontitle\E)\D?0*(\d+)(?:\.|\s|\/|\\|-|\1)+[Ss]0*\2(?:\.|\s|-|_)*[Ee]0*(\d+).*/i
 		|| $dirsandfile =~ /(.*?)(?:\.|\s|\/|\\|-|\1)*(?:Season|Series|\Q$seasontitle\E)\D?0*(\d+)(?:\.|\s|\/|\\|-|\1)+\[?0*\2?\s*[xX-]?\s*0*(\d{1,2}).*/i
@@ -522,7 +532,7 @@ sub sort_directory {
 		#  not a date, but is 1x1 or 1-1
 		|| ($filename !~ /(\d{4}[-.]\d{1,2}[-.]\d{1,2})/ && $filename =~ /(.*)(?:\.|\s|-|_)+\[?0*(\d+)\s*[xX-]\s*0*(\d+).*/)
 		|| $filename =~ /(.*)(?:\.|\s|-|_)+0*(\d)(\d{2})(?:\.|\s).*/
-		|| ($matchtype eq "LIBERAL" && filename($file) =~ /(.*)(?:\.|\s|-|_)0*(\d+)\D*0*(\d+).*/))) {
+		|| ($matchtype eq "LIBERAL" && filename($file) =~ /(.*)(?:\.|\s|-|_)0*(\d+)\D*0*(\d+).*/)) {
 			$pureshowname = $1;
 			$pureshowname = fixpurename($pureshowname);
 			$showname = fixtitle($pureshowname);
@@ -540,16 +550,15 @@ sub sort_directory {
 			}
 			if($pureshowname ne "") {
 				if($tvdir !~ /^KEEP_IN_SAME_DIRECTORIES/) {
-					if(move_episode($pureshowname, $showname, $series, $episode, $year, $file) eq $REDO_FILE) {
-						redo FILE;
-					}
+					move_episode($pureshowname, $showname, $series, $episode, $year, $file);
+					return 1;
 				} else {
 					rename_episode($pureshowname, $series, $episode, $file);
+					return 1;
 				}
 			}
 		# match "Show - Episode title.avi" or "Show - [AirDate].avi"
-		} elsif($tvdir && $lookupseasonep eq "TRUE" && matches_type($filename, @videoext, @imageext, @subtitleext) && 
-		(($treatdir eq "AS_FILES_TO_SORT" && -d $file) || -f $file) && 
+		} elsif($tvdir && $lookupseasonep eq "TRUE" && (-d $file && $treatdir eq "AS_FILES_TO_SORT" || -f $file && matches_type($filename, @videoext, @imageext, @subtitleext)) && 
 		(filename($file) =~ /(.*)(?:\.|\s)(\d{4}[-.]\d{1,2}[-.]\d{1,2}).*/ || filename($file) =~ /(.*)-(.*)(?:\..*)/)) {
 			$pureshowname = $1;
 			$showname = fixtitle($pureshowname);
@@ -567,36 +576,56 @@ sub sort_directory {
 					$series = sprintf("%02d", $series);
 				}
 				if($tvdir !~ /^KEEP_IN_SAME_DIRECTORIES/) {
-					if(move_episode($pureshowname, $showname, $series, $episode, $year, $file) eq $REDO_FILE) {
-						redo FILE;
-					}
+					move_episode($pureshowname, $showname, $series, $episode, $year, $file);
+					return 1;
 				} else {
 					rename_episode($pureshowname, $series, $episode, $file);
+					return 1;
 				}
+			}
+		}
+	}
+	return 0;
+}
+
+# checks whether this is a tv season directory to be sorted as is
+# if it is, this kicks of the sorting process
+sub is_season_directory {
+	my ($file, $filename) = @_;
+	# conditions for it to be checked
+	if($tvdir && ($treatdir eq "AS_FILES_TO_SORT" && -d $file)) {
+		# check regex
+		if($file =~ /.*\/(.*)(?:Season|Series|$seasontitle)\D?0*(\d+).*/i && $1) {
+			out("verbose", "INFO: Treating $file as directory to sort\n");
+			$pureshowname = $1;
+			if($seasondoubledigit eq "TRUE") {
+				$series = sprintf("%02d", $2);
 			} else {
-				#if we can't find a matching show and episode we assume this is not an episode file
-				$nonep = "TRUE";
+				$series = $2;
 			}
-		} else {
-			$nonep = "TRUE";
-		}
-		# Movie regex
-		if(($nonep eq "TRUE" && -r $file && $moviedir && matches_type($filename, @videoext, @imageext, @subtitleext)) and ($filename =~ /(.*?)\s*-?\s*\(?\[?([12][0-9]{3})\)?\]?(?:BDRip|\[Eng]|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)*.*(\.\w*)/i
-			|| $filename =~ /(.*?)(?:[[\]{}()]|\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)+.*?()(\.\w*)/i
-			|| $filename =~ /(.*)()(\.\w*)/i)) {
-			my $title = $1;
-			my $year = $2;
-			my $ext = $3;
-			$title =~ s/(?:\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5|[[\]{}()])//ig;
-			# at this point if it is not a known movie it is an "other"
-			if(match_and_sort_movie($title, $year, $ext, $file) eq "TRUE") {
-				$nonep = "FALSE";
+			$showname = fixtitle($pureshowname);
+			# extract year if present, for example "Show (2011)"
+			if($pureshowname =~ /(.*)(?:\.|\s|-|\(|\[)*\(?((?:20|19)\d{2})(?:\)|\])?/) {
+				$year = $2;
+			} else {
+				$year = "";
+			}
+			if(move_series($pureshowname, $showname, $series, $year, $file)) {
+				return 1;
 			}
 		}
-		# move non-episodes
-		if($nonep eq "TRUE" && defined $miscdir && $tvdir ne "KEEP_IN_SAME_DIRECTORIES") {
-			sort_other ("NON-EPISODE", "$miscdir", $file);
-		}
+	}
+	return 0;
+}
+
+# checks whether this is music to be sorted
+# if it is, this kicks of the sorting process
+sub is_music {
+	my ($file, $filename) = @_;
+	# conditions for it to be checked
+	if($musicdir && is_music_to_be_sorted($file, $filename)) {
+		#move to music folder if music
+		sort_other ("MUSIC", "$musicdir", $file);
 	}
 }
 
@@ -1102,10 +1131,10 @@ sub matches_type {
 	my ($file, @extensions) = @_;
 	foreach my $ext (@extensions) {
 		if($file =~ /.*\Q$ext\E$/) {
-			return "TRUE";
+			return 1;
 		}
 	}
-	return "FALSE";
+	return 0;
 }
 
 sub isnonep {
@@ -1339,7 +1368,7 @@ sub dir_matching_show_name {
 }
 
 sub dir_matching_season {
-	my ($show, $series, $pureshowname) = @_;
+	my ($show, $series, $pureshowname, $make_or_check) = @_;
 
 	foreach my $season (bsd_glob($show.'/*')) {
 		if(-d $season.'/' && $season =~ /(?:Season|Series|$seasontitle)?\s?0*(\d+)$/i && $1 == $series) {
@@ -1347,6 +1376,9 @@ sub dir_matching_season {
 		}
 	}
 	# didn't find a matching season, make DIR
+	if($make_or_check eq "check") {
+		return 0;
+	}
 	out("std", "INFO: making season directory: $show/$seasontitle$series\n");
 	my $newdir = $seasontitle.$series;
 	if($usedots eq "TRUE") {
@@ -1371,7 +1403,7 @@ sub move_episode {
 		out("verbose", "INFO: found a matching show:\n\t$show\n");
 		my $season;
 		if($useseasondirs eq "TRUE") {
-			$season = dir_matching_season($show, $series, $pureshowname);
+			$season = dir_matching_season($show, $series, $pureshowname, "make");
 		} else {
 			out("verbose", "INFO: not using a season directory.\n");
 			$season = $show;
@@ -1699,7 +1731,7 @@ sub sort_file {
 	my ($file, $newpath, $msg) = @_;
 	# returns whether to display a message
 	my $retval = 'FALSE';
-	if(-e $newpath && (-d $file && $movie_move_folder eq "FALSE")) {
+	if(-e $newpath) {
 		if(filename($file) =~ /repack|proper/i) {
 			# still overwrites if copying, but doesn't output a message unless verbose
 			if($verbose || ($sortby ne "COPY" && $sortby ne "PLACE-SYMLINK")) {
@@ -1773,24 +1805,25 @@ sub move_series {
 	my ($pureshowname, $showname, $series, $year, $file) = @_;
 	my $show = dir_matching_show_name($tvdir, $pureshowname, $showname, $year);
 	if($show) {
-		out("verbose", "INFO: found a matching show:\n\t$show\n");
-		my $season = dir_matching_season($show, $series, $pureshowname);
+		out("verbose", "INFO: found a matching show:\t$show\n");
+		my $season = dir_matching_season($show, $series, $pureshowname, "check");
 		if($season) {
 			out("warn", "SKIP: Cannot move season directory: found a matching season already existing:\n\t$season\n");
 			return 0;
-		}
-	} else {
-		# didn't find a matching season, move DIR
-		move_a_season($file, $show, $series);
-		if($xbmcoldwebserver || $xbmcaddress) {
-			$new = "$showname Season $series directory";
-			$newshows .= "$new\n";
-			if($xbmcoldwebserver) {
-				get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(NEW EPISODE, $new, 7000))";
+		} else {
+			# found a show without a matching season, move DIR
+			move_a_season($file, $show, $series);
+			if($xbmcoldwebserver || $xbmcaddress) {
+				$new = "$showname Season $series directory";
+				$newshows .= "$new\n";
+				if($xbmcoldwebserver) {
+					get "http://$xbmcoldwebserver/xbmcCmds/xbmcHttp?command=ExecBuiltIn(Notification(NEW EPISODE, $new, 7000))";
+				}
 			}
+			return 1;
 		}
-		return 0;
 	}
+	return 0;
 }
 
 # Matches the title and year to known movies
@@ -1852,7 +1885,7 @@ sub match_and_sort_movie {
 					sort_movie($file, $movietitle, $year, $ext, $img);
 					return "TRUE";
 				} else {
-					print "WARN: Found matching movie '$movietitle', but does not match year in filename (named $year not $released_year), skipping\n";
+					out("warn", "WARN: Found matching movie '$movietitle', but does not match year in filename (named $year not $released_year), skipping\n");
 					next MOVIE;
 				}
 			} else {
@@ -1876,6 +1909,10 @@ sub sort_movie {
 
 	if($rename) {
 		my $location = $movierenameformat;
+		# if we are sorting a directory, ignore directories in the rename format
+		if(-d $file) {
+			$location =~ s/[\/].*//ig;
+		}
 		$location =~ s/\[MOVIE_TITLE]/$title/ig;
 		if($year) {
 			$location =~ s/\[YEAR1]/($year)/ig;
@@ -1898,25 +1935,14 @@ sub sort_movie {
 	if($usedots eq "TRUE") {
 		$dest =~ s/\s/./ig;
 	}
-	if(-f $file && $movie_in_folder eq "TRUE") {
-		#TODO Allow user to set folder name with variables?  Unsure how to do as of yet
-		#If user specifies, a folder will be created with the movie name, and then the movie will be placed in the folder
-		#First tested to make sure it was a file, not a directory, as a directory might be moved
-		my $movie_folder = filename_without_ext($dest).'/'.$dest;
-		$dest = $movie_folder;	
-	}
-	if (-d $file && $movie_move_folder eq "TRUE"){
-		#If the $file is a direcotry, and we specify that directories should be moved with their contents in them
-		#Then set the dest to be in the movies dir in a dir with the movies' name on it
-		#If not, it might be "double deep" due to $movie_in_folder
-		$dest = filename($file);
-	}
-	print "DEST: $dest\n"; 
-	if (-d $file && $movie_move_folder eq "TRUE"){
+	# set the destination, and create the directory if we need to
+	if(-d $file) {
 		$mdir = $moviedir.$dest.'/';
-	} else {$mdir = path($moviedir.$dest);}
-	out("std", "INFO: Making directory: $mdir\n") unless(-e $mdir);
-	$dryrun or make_path($mdir);
+	} else {
+		$mdir = path($moviedir.$dest);
+		out("std", "INFO: Making directory: $mdir\n") unless(-e $mdir);
+		$dryrun or make_path($mdir);
+	}
 	if(sort_file($file, $moviedir.$dest, "MOVIE") eq "TRUE") {
 		# if the movie was sorted...
 		# download images
