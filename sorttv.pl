@@ -246,7 +246,7 @@ my @optionlist = (
 	"movie-language|mlang=s" => \$movielanguage,
 	"music-directory|music=s" => sub { set_directory($_[1], \$musicdir); },
 	"music-extension|me=s" => \@musicext,
-	"non-media-ext|nm=s" => \@nonmediaext,
+	"non-media-extension|nm=s" => \@nonmediaext,
 	"h|help|?" => \$help, man => \$man
 );
 
@@ -483,12 +483,12 @@ sub sort_directory {
 
 sub is_video_to_be_sorted {
 	my ($file, $filename) = @_;
-	return ($treatdir eq "AS_FILES_TO_SORT" and -d $file) || (-f $file and matches_type($filename, @videoext, @imageext, @subtitleext));
+	return ($treatdir eq "AS_FILES_TO_SORT" and -d $file) || (-f $file and not is_other($file) and matches_type($filename, @videoext, @imageext, @subtitleext));
 }
 
 sub is_music_to_be_sorted {
 	my ($file, $filename) = @_;
-	return -f $file and matches_type($filename, @musicext);
+	return -f $file and not is_other($file) and matches_type($filename, @musicext);
 }
 
 # checks whether this is a movie to be sorted
@@ -1076,6 +1076,19 @@ sub remdot {
 	return $title;
 }
 
+# removes slashes for creating files
+sub cleanup_filename {
+	my ($title) = @_;
+	# remove slashes
+	$title =~ s/\\|\//-/ig;
+	# remove double spaces
+	$title =~ s/\s\s/ /ig;
+	# don't start or end on whitespace
+	$title =~ s/\s$//ig;
+	$title =~ s/^\s//ig;
+	return $title;
+}
+
 # removes path
 sub filename {
 	my ($title) = @_;
@@ -1137,14 +1150,14 @@ sub matches_type {
 	return 0;
 }
 
-sub isnonep {
+sub is_other {
 	my ($file) = @_;
 	foreach my $ext (@nonmediaext) {
 		if($file =~ /.*\Q$ext\E$/) {
-			return "TRUE";
+			return 1;
 		}
 	}
-	return "FALSE";
+	return 0;
 }
 
 # checks white and black list
@@ -1695,8 +1708,8 @@ sub move_an_ep {
 			$newfilename .= " $1";
 		}
 		$newfilename .= $ext;
-		# make sure it is filesystem friendly:
-		$newfilename = escape_myfilename($newfilename, "-");
+		# make sure it is filesystem friendly and contains no slashes:
+		$newfilename = cleanup_filename(escape_myfilename($newfilename, "-"));
 	}
 	if($usedots eq "TRUE") {
 		$newfilename =~ s/\s/./ig;
@@ -1872,6 +1885,8 @@ sub match_and_sort_movie {
 			out("verbose",  "INFO: Title matches\n");
 			# choose title to use
 			my $movietitle = defined $orgname ? $orgname : defined $altname ? $altname : $movie;
+			# remove any slashes from the title
+ 			$movietitle = cleanup_filename($movietitle);
 			my $released_year;
 			if($released =~ /(\d{4})-\d{2}-\d{2}/) {
 				$released_year = $1;
