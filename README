@@ -6,7 +6,7 @@ Automatically sorts TV show episodes into an organised directory structure.
 
 Sorts and moves episodes and complete season directories.
 
-Tested on Linux and Windows
+SortTV works on Linux, Windows, and Mac OS X.
 
 - Optional integration with xbmc (notification and library update).
 - Can optionally move non-episodes into a separate directory. 
@@ -23,7 +23,7 @@ display a message to anyone viewing, that new episodes are available.
 
 All you will have to do is sit back and enjoy.
 
-* Episodes of many openly licenced shows are available, and episodes can be downloaded using 
+* Episodes of many openly licensed shows are available, and episodes can be downloaded using 
 RSS feeds, torrent downloaders, file hosting site downloaders etc.
 
 ---
@@ -49,12 +49,17 @@ This program is free software: you can redistribute it and/or modify
 ---
 Install
 
-You need to install Perl and then save sorttv.pl wherever. Eg: on Linux into /home/[yourusername]/sorttv/
+Make sure you have Perl installed. 
+If you are using Windows I recommend Strawberry Perl. Linux and Mac OS X often have Perl already installed.
+On Mac OS X you may need to install the CLI developer tools.
+
+Extract the SortTV script (sorttv.pl etc) wherever you like. 
+For example, on Linux into /home/[yourusername]/sorttv/
 
 Edit the sorttv.conf file to the settings you want (at minimum specify the location of the directories to sort from and to)
 
 Install the modules the script uses.
-To do so, run this command on Linux:
+To do so, run this command on Linux or Mac OS X:
 sudo cpan File::Copy::Recursive File::Glob LWP::Simple TVDB::API Getopt::Long Switch WWW::TheMovieDB::Search XML::Simple
 On Windows run the same command, without "sudo"
 
@@ -64,8 +69,8 @@ Automation
 If you want to make it sort new episodes every hour:
 
 On Linux: 
-  in a console type: crontab -e
-  on a new line enter "5 * * * * " followed by the command to run the script.
+  In a console type: crontab -e
+  On a new line enter "5 * * * * " followed by the command to run the script.
   This will run the script 5 mins past every hour.
   Eg:
   5 * * * * nice perl /home/cliffe/sorttv/sorttv.pl
@@ -82,7 +87,7 @@ USAGE:
 sorttv.pl [OPTIONS] [directory-to-sort directory-to-sort-into]
 
 By default SortTV tries to read the configuration from sorttv.conf
-	(an example config file is available online)
+	(an example config file is provided with SortTV)
 
 The simplest way to use SortTV is to edit the example config file, then just run "perl sorttv.pl" to do the sorting
 
@@ -135,6 +140,17 @@ OPTIONS:
 		Delete the source file, if the file matches one of these patterns
 		Uses shell-like simple pattern matches (eg *.avi)
 		This argument can be repeated to add more rules
+
+	--consider-media-file-extensions=[TRUE|FALSE]
+		Consider the file extension before treating certain files as movies or TV episodes
+		Recommended: SortTV is aware of a large number of extensions, and this can avoid many false matches
+		if not specified, TRUE
+
+	--non-media-extension=pattern
+		These extensions are NEVER movies or TV shows or music, treat them as "others" automatically
+		Note: Will not run these file types through tvdb, tmdb, etc.
+		Not typically required if consider-media-file-extensions=TRUE
+		This argument can be repeated to add multiple extensions
 
 	--filesize-range=pattern
 		Only copy files which fall within these filesize ranges.
@@ -205,6 +221,7 @@ OPTIONS:
 			[YEAR1]: "(2011)"
 			[YEAR2]: "2011"
 			[QUALITY]: " HD" (or " SD") - extracted from original file name
+			/: A sub-directory (folder) - movies can be in their own directories
 		If not specified the format is, "[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEAR1]"
 
 	--use-dots-instead-of-spaces=[TRUE|FALSE]
@@ -370,6 +387,28 @@ To integrate with xbmc (notification and automatic library update):
 	perl sorttv.pl --directory-to-sort=/home/me/Downloads --directory-to-sort-into=/home/me/Videos/TV --xbmc-webserver=localhost:8080
 
 And so on...
+
+---
+
+Frequently Asked Queries
+
+Q: SortTV wont run, it gives an error indicating that modules are missing (cant find a .pm file)
+A: Make sure you followed the instructions on installing the cpan modules. If that doesn't work, see below.
+
+Q: I am having trouble installing the cpan modules...
+A: If they are not passing the tests, you can force cpan to install them anyway. Run sudo cpan, then type "force install Switch", where Switch is the name of the module you are trying to install.
+
+Q: Why doesn't SortTV download images for TV shows/episodes on Windows?
+A: This is currently a limitation in the TVDB::API cpan module. The images should download fine for movies, or if you use SortTV on Linux all images should download correctly. Images downloaded my the module on Windows are corrupted, therefore this features is now automatically disabled for Windows users. Feel free to discuss this problem with the creator of the module.
+
+Q: How do I submit code?
+A: For simple patches, I suggest you make your changes in a copy, and create a patch using the command: "diff -ur dir1 dir2 > patch", where dir1 is a directory containing the latest release of SortTV, and dir2 is your-new-version. This creates a file named "patch" containing just your changes. Send "patch" via an email or via the forum. Alternatively, if you wish you can use Git. Find repo information on the SortTV sourceforge page.
+
+Q: How can I say thank you / make a donation?
+A: I am really glad you have found SortTV useful! Pop by the forum and say hello, or make a donation via Paypal here: http://sourceforge.net/donate/index.php?group_id=330009 If you would rather donate via Bitcoin let me know and I'll give you details.
+
+Q: Something else...
+A: Please discuss the issue on the forum
 
 ---
 Enjoy!

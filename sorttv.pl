@@ -21,6 +21,7 @@
 # Fox - xbmc forum
 # TechLife - xbmc forum
 # frozenesper - xbmc forum
+# deranjer - xbmc forum
 #
 # Please goto the xbmc forum to discuss SortTV:
 # http://forum.xbmc.org/showthread.php?t=75949
@@ -71,7 +72,7 @@ my @subtitleext = ("ssa", "srt", "sub");
 my @imageext = ("jpg", "jpeg", "tbn");
 my (@whitelist, @blacklist, @deletelist, @sizerange, @filestosort, @nonmediaext);
 my (%showrenames, %showtvdbids);
-my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = my $displaylicense = "TRUE";
+my $REDO_FILE = my $checkforupdates = my $moveseasons = my $windowsnames = my $tvdbrename = my $lookupseasonep = my $extractrar = my $useseasondirs = my $displaylicense = my $useextensions = "TRUE";
 my $usedots = my $rename = my $seasondoubledigit = my $removesymlinks = my $needshowexist = my $flattennonepisodefiles = my $tvdbrequired = my $sort_movie_dir = "FALSE";
 my $dryrun = "";
 my $seasontitle = "Season ";
@@ -103,6 +104,7 @@ my @optionlist = (
 	"flatten-non-eps|fne=s" => \$flattennonepisodefiles,
 	"check-for-updates|up=s" => \$checkforupdates,
 	"treat-directories|td=s" => \$treatdir,
+	"consider-media-file-extensions|ext=s" => \$useextensions,
 	"if-file-exists|e=s" => \$ifexists,
 	"extract-compressed-before-sorting|rar=s" => \$extractrar,
 	"show-name-substitute=s" =>
@@ -389,15 +391,15 @@ sub process_args {
 sub display_sortdirs {
 	out("std", "Sorting:\n\tFrom $sortdir\n") if $sortdir;
 	out("std", "\tTV episodes into $tvdir\n") if $tvdir;
-	out("std", "\tmovies into $moviedir\n") if $moviedir;
-	out("std", "\tmusic into $musicdir\n") if $musicdir;
-	out("std", "\teverything else into $miscdir\n") if $miscdir;
+	out("std", "\tMovies into $moviedir\n") if $moviedir;
+	out("std", "\tMusic into $musicdir\n") if $musicdir;
+	out("std", "\tEverything else into $miscdir\n") if $miscdir;
 }
 
 # displays the license and asks for a donation
 sub display_license {
 	out("std", "SortTV is copyleft free open source software.\nYou are free to make modifications and share, as defined by version 3 of the GNU General Public License\n");
-	out("std", "If you find this software helpful, \$5 donations are welcomed: http://sourceforge.net/donate/index.php?group_id=330009\n");
+	out("std", "If you find this software helpful, \$5 donations are welcomed:\nhttp://sourceforge.net/donate/index.php?group_id=330009\n");
 	out("std", "~" x 6,"\n");
 }
 
@@ -483,7 +485,7 @@ sub sort_directory {
 
 sub is_video_to_be_sorted {
 	my ($file, $filename) = @_;
-	return ($treatdir eq "AS_FILES_TO_SORT" and -d $file) || (-f $file and not is_other($file) and matches_type($filename, @videoext, @imageext, @subtitleext));
+	return ($treatdir eq "AS_FILES_TO_SORT" and -d $file) || ($useextensions eq "FALSE" and -f $file and not is_other($file)) || (-f $file and not is_other($file) and matches_type($filename, @videoext, @imageext, @subtitleext));
 }
 
 sub is_music_to_be_sorted {
@@ -729,6 +731,22 @@ OPTIONS:
 	Uses shell-like simple pattern matches (eg *.avi)
 	This argument can be repeated to add more rules
 
+	--consider-media-file-extensions=[TRUE|FALSE]
+		Consider the file extension before treating certain files as movies or TV episodes
+		Recommended: SortTV is aware of a large number of extensions, and this can avoid many false matches
+		if not specified, TRUE
+
+--consider-media-file-extensions=[TRUE|FALSE]
+	Consider the file extension before treating certain files as movies or TV episodes
+	Recommended: SortTV is aware of a large number of extensions, and this can avoid many false matches
+	if not specified, TRUE
+
+--non-media-extension=pattern
+	These extensions are NEVER movies or TV shows or music, treat them as "others" automatically
+	Note: Will not run these file types through tvdb, tmdb, etc.
+	Not typically required if consider-media-file-extensions=TRUE
+	This argument can be repeated to add multiple extensions
+
 --filesize-range=pattern
 	Only copy files which fall within these filesize ranges.
 	Examples for the pattern include 345MB-355MB or 1.05GB-1.15GB
@@ -798,6 +816,7 @@ OPTIONS:
 		[YEAR1]: "(2011)"
 		[YEAR2]: "2011"
 		[QUALITY]: " HD" (or " SD") - extracted from original file name
+		/: A sub-directory (folder) - movies can be in their own directories
 	If not specified the format is, "[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEAR1]"
 
 --use-dots-instead-of-spaces=[TRUE|FALSE]
@@ -1434,6 +1453,10 @@ sub move_episode {
 
 sub fetchshowimages {
 	my ($fetchname, $newshowdir) = @_;
+	if($^O =~ /MSWin/) {
+		out("std", "WARN: not downloading TV images, not supported on Windows.\n");
+		return;
+	}
 	out("std", "DOWNLOAD: downloading images for $fetchname\n");
 	my $banner = $tvdb->getSeriesBanner($fetchname);
 	my $fanart = $tvdb->getSeriesFanart($fetchname);
@@ -1466,6 +1489,10 @@ sub fetchshowimages {
 
 sub fetchseasonimages {
 	my ($fetchname, $newshowdir, $season, $seasondir) = @_;
+	if($^O =~ /MSWin/) {
+		out("std", "WARN: not downloading TV images, not supported on Windows.\n");
+		return;
+	}
 	out("std", "DOWNLOAD: downloading season image for $fetchname\n");
 	my $banner = $tvdb->getSeasonBanner($fetchname, $season);
 	my $bannerwide = $tvdb->getSeasonBannerWide($fetchname, $season);
@@ -1490,6 +1517,10 @@ sub fetchseasonimages {
 }
 
 sub fetchepisodeimage {
+	if($^O =~ /MSWin/) {
+		out("std", "WARN: not downloading TV images, not supported on Windows.\n");
+		return;
+	}
 	eval { # ignore errors
 		my ($fetchname, $newshowdir, $season, $seasondir, $episode, $newfilename) = @_;
 		my $epimage = $tvdb->getEpisodeBanner($fetchname, $season, $episode);
