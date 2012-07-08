@@ -36,9 +36,9 @@ my $music_dir = "$scriptpath/test_directory/Music";
 my $log_file = "$scriptpath/test.log";
 
 my $failed_count = my $passed_count = 0;
-my $standard_renaming = "'--rename-tv-format=[SHOW_NAME] - [EP1]' --rename-media=TRUE";
-my $standard_tvdb_renaming = "'--rename-tv-format=[SHOW_NAME] - [EP1][EP_NAME1]' --rename-media=TRUE";
-my $movie_rename = "'--rename-tv-format=[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEAR1]'";
+my $standard_renaming = "\"--rename-tv-format=[SHOW_NAME] - [EP1]\" --rename-media=TRUE";
+my $standard_tvdb_renaming = "\"--rename-tv-format=[SHOW_NAME] - [EP1][EP_NAME1]\" --rename-media=TRUE";
+my $movie_rename = "\"--rename-tv-format=[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEAR1]\"";
 
 {
 	# here we list all the tests
@@ -67,7 +67,7 @@ my $movie_rename = "'--rename-tv-format=[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEA
 		);
 
 	test_sorttv("substitutions (w/tvdb)",
-		"'--show-name-substitute=lalala-->Pioneer One' $standard_tvdb_renaming", 
+		"\"--show-name-substitute=lalala-->Pioneer One\" $standard_tvdb_renaming", 
 		"lalala 1x1.avi"=>"$tv_dir/Pioneer One/Season 1/Pioneer One - S01E01 - Earthfall.avi",
 		);
 
@@ -115,17 +115,17 @@ my $movie_rename = "'--rename-tv-format=[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEA
 		);
 
 	test_sorttv("TV renaming 1x1",
-		"'--rename-tv-format=[SHOW_NAME] ~ [EP2]' --rename-media=TRUE --no-network",
+		"\"--rename-tv-format=[SHOW_NAME] ~ [EP2]\" --rename-media=TRUE --no-network",
 		"Show 1x1.avi"=>"$tv_dir/Show/Season 1/Show ~ 1x1.avi",
 		);
 
 	test_sorttv("TV renaming 1x01",
-		"'--rename-tv-format=[SHOW_NAME] ~ [EP3]' --rename-media=TRUE --no-network",
+		"\"--rename-tv-format=[SHOW_NAME] ~ [EP3]\" --rename-media=TRUE --no-network",
 		"Show 1x1.avi"=>"$tv_dir/Show/Season 1/Show ~ 1x01.avi",
 		);
 
 	test_sorttv("TV renaming 01 w/quality",
-		"'--rename-tv-format=[EP4][QUALITY]' --rename-media=TRUE --no-network",
+		"\"--rename-tv-format=[EP4][QUALITY]\" --rename-media=TRUE --no-network",
 		"Show 1x1.avi"=>"$tv_dir/Show/Season 1/01.avi",
 		"Show 1x1 1080p.avi"=>"$tv_dir/Show/Season 1/01 HD.avi",
 		"Show 1x1 DVDRip.avi"=>"$tv_dir/Show/Season 1/01 SD.avi",
@@ -143,7 +143,7 @@ my $movie_rename = "'--rename-tv-format=[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEA
 		);
 
 	test_sorttv("season directory naming",
-		"'--season-title=Series.' --season-double-digits=TRUE --no-network $standard_renaming", 
+		"\"--season-title=Series.\" --season-double-digits=TRUE --no-network $standard_renaming", 
 		"test/Pioneer One Season 1 Episode 1.avi"=>"$tv_dir/Pioneer One/Series.01/Pioneer One - S01E01.avi",
 		);
 
@@ -155,7 +155,7 @@ my $movie_rename = "'--rename-tv-format=[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEA
 		);
 
 	test_sorttv("tvdb id substitute",
-		"'--tvdb-id-substitute:test-->83949' $standard_renaming", 
+		"\"--tvdb-id-substitute:test-->83949\" $standard_renaming", 
 		"test s1e1.avi"=>"$tv_dir/The Guild/Season 1/The Guild - S01E01.avi",
 		);
 
@@ -241,12 +241,12 @@ my $movie_rename = "'--rename-tv-format=[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEA
 		);
 
 	test_sorttv("movie renaming format",
-		"'--rename-movie-format=[MOVIE_TITLE] [YEAR2]' --rename-media=TRUE --fetch-movie-images=FALSE", 
+		"\"--rename-movie-format=[MOVIE_TITLE] [YEAR2]\" --rename-media=TRUE --fetch-movie-images=FALSE", 
 		"RIP: A Remix Manifesto.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009.avi",
 		);
 
 	test_sorttv("movie renaming w/quality",
-		"'--rename-movie-format=[MOVIE_TITLE] [YEAR2][QUALITY]' --rename-media=TRUE --fetch-movie-images=FALSE",
+		"\"--rename-movie-format=[MOVIE_TITLE] [YEAR2][QUALITY]\" --rename-media=TRUE --fetch-movie-images=FALSE",
 		"RIP: A Remix Manifesto DVD.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009 SD.avi",
 		);
 
@@ -261,7 +261,7 @@ my $movie_rename = "'--rename-tv-format=[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEA
 		);
 
 	test_sorttv("movie images downloads into same directory",
-		"'--rename-movie-format=[MOVIE_TITLE] [YEAR2]' --rename-media=TRUE --fetch-movie-images=TRUE", 
+		"\"--rename-movie-format=[MOVIE_TITLE] [YEAR2]\" --rename-media=TRUE --fetch-movie-images=TRUE", 
 		"RIP: A Remix Manifesto.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009.tbn;$movie_dir/RiP!- A Remix Manifesto 2009.jpg;$movie_dir/RiP!- A Remix Manifesto 2009-fanart.jpg",
 		);
 
