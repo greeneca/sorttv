@@ -1953,7 +1953,7 @@ sub sort_movie {
 	my $sendxbmcnotifications = $xbmcoldwebserver;
 	$sendxbmcnotifications or $sendxbmcnotifications = $xbmcaddress;
 
-	if($rename) {
+	if($rename eq "TRUE") {
 		my $location = $movierenameformat;
 		# if we are sorting a directory, ignore directories in the rename format
 		if(-d $file) {
@@ -1995,6 +1995,14 @@ sub sort_movie {
 		if($dryrun) {
 			out("std", "DRYRUN: not downloading movie images.\n");
 		} elsif($fetchmovieimages ne "FALSE") {
+			my $posterfilename = "${mdir}folder.jpg";
+			my $posterfilename_copy = "${mdir}movie.tbn";
+			my $fanartfilename = "${mdir}fanart.jpg";
+			unless($rename eq "TRUE" && $movierenameformat =~ /\//) {
+				$posterfilename = $mdir.filename_without_ext($dest).".jpg";
+				$posterfilename_copy = $mdir.filename_without_ext($dest).".tbn";
+				$fanartfilename = $mdir.filename_without_ext($dest)."-fanart.jpg";
+			}
 			out("std", "INFO: Fetching movie images\n");
 			foreach my $image (keys %$img) {
 				my $status;
@@ -2002,12 +2010,23 @@ sub sort_movie {
 				if($$img{$image}{type} eq "poster") {
 					out("std", "INFO: Downloading poster for $title\n");
 					for(my $tries=0;$tries<2&&!LWP::Simple::is_success($status);$tries++) {
-						$status = LWP::Simple::getstore( $$img{$image}{url}, "${mdir}folder.jpg" ) || (out("warn", "Failed to download image\n") && next);
+						$status = LWP::Simple::getstore( $$img{$image}{url}, $posterfilename ) || (out("warn", "Failed to download image\n") && next);
 					}
 				} elsif($$img{$image}{type} eq "backdrop") {
 					out("std", "INFO: Downloading backdrop for $title\n");
 					for(my $tries=0;$tries<2&&!LWP::Simple::is_success($status);$tries++) {
-						$status = LWP::Simple::getstore( $$img{$image}{url}, "${mdir}fanart.jpg" ) || (out("warn", "Failed to download image\n") && next);
+						$status = LWP::Simple::getstore( $$img{$image}{url}, $fanartfilename ) || (out("warn", "Failed to download image\n") && next);
+					}
+				}
+				my $ok = 1;
+				if (-e $posterfilename) {
+					# if configured to symlink
+					if($duplicateimages eq "SYMLINK") {
+						$ok = eval{symlink $posterfilename, $posterfilename_copy;};
+					}
+					# if not symlink, or symlink failed
+					if($duplicateimages ne "SYMLINK" || !defined $ok) {
+						copy $posterfilename, $posterfilename_copy;
 					}
 				}
 				};
