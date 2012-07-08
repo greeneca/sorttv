@@ -244,7 +244,7 @@ my @optionlist = (
 			}
 		},
 	"movie-directory|movie=s" => sub { set_directory($_[1], \$moviedir); },
-	"sort-move-directories|mdsort=s" => \$sort_movie_dir,
+	"sort-movie-directories|mdsort=s" => \$sort_movie_dir,
 	"movie-language|mlang=s" => \$movielanguage,
 	"music-directory|music=s" => sub { set_directory($_[1], \$musicdir); },
 	"music-extension|me=s" => \@musicext,
@@ -886,6 +886,13 @@ OPTIONS:
 --music-extension=extension
 	Define additional extensions for music files (SortTV knows a lot already)
 	This argument can be repeated to add multiple additional extensions
+
+--sort-movie-directories=[TRUE|FALSE]
+	Attempt to sort entire directories that represent a movie
+	The directory (and all its contents AS IS) will be sorted
+	Note: Currently, this option WILL NOT rename or sort ANY of the contents of the directory, 
+	including the movie. The directory will just be sorted into the movie-directory.
+	If not specified, FALSE
 
 --force-windows-compatible-filenames=[TRUE|FALSE]
 	Forces MSWindows compatible file names, even when run on other platforms such as Linux
