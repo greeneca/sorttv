@@ -352,7 +352,8 @@ OPTIONS:
 
 	--tvdb-episode-name-required=[TRUE|FALSE]
 		Only sort tv episodes if the episode name was available from thetvdb
-		Note: directories may still be created in the destination, even if the file is skipped due to this rule
+		Note that this only applies if you include the tvdb episode name in the rename format (and have renaming enabled)
+		Also note that directories may still be created in the destination, even if the file is skipped due to this rule
 		If not specified, FALSE
 
 	--extract-compressed-before-sorting=[TRUE|FALSE]
