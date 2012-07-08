@@ -1242,7 +1242,7 @@ sub check_filesize {
 			my $maxfilesize = $2;
 
 			# Check the filesize
-			if ($minfilesize < $filesize && $filesize < $maxfilesize) {
+			if ($minfilesize <= $filesize && $filesize <= $maxfilesize) {
 				return "OK";
 			}
 		}
