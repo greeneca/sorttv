@@ -1,19 +1,19 @@
 ~~~~~~
 SortTV
 ~~~~~~
-Automatically sorts TV show episodes into an organised directory structure. 
-	dir structure:[show]/[season x]/[eps]
-
-Sorts and moves episodes and complete season directories.
+Automatically sorts TV show episodes, movies, and music into an organised directory structure.
+For example, TV/[show]/[season x]/[eps]
 
 SortTV works on Linux, Windows, and Mac OS X.
 
-- Optional integration with xbmc (notification and library update).
-- Can optionally move non-episodes into a separate directory. 
-- Can also rename episodes.
-- Options for renaming, including custom naming formats and fetching episode names from thetvdb.com.
+- Automatically sorts your media, so you don't have to.
+- Lots of renaming options.
+- Can optionally rename episodes and movies using information from thetvdb and tmdb.
+- Image downloading.
+- Integration with xbmc (notification and library update).
+- Can move non-episodes into a separate directory.
 - Sort by move, copy, or symlink.
-- Many other options (see below).
+- Many many other options (see below).
 
 This provides the magic required to have your home theatre PC (HTPC) keep itself sorted out. 
 You can combine this script with an automatic episode downloader (there are many available*), 
@@ -407,7 +407,7 @@ Q: I am having trouble installing the cpan modules...
 A: If they are not passing the tests, you can force cpan to install them anyway. Run sudo cpan, then type "force install Switch", where Switch is the name of the module you are trying to install.
 
 Q: Why doesn't SortTV download images for TV shows/episodes on Windows?
-A: This is currently a limitation in the TVDB::API cpan module. The images should download fine for movies, or if you use SortTV on Linux all images should download correctly. Images downloaded my the module on Windows are corrupted, therefore this features is now automatically disabled for Windows users. Feel free to discuss this problem with the creator of the module.
+A: This is currently a limitation in the TVDB::API cpan module. The images should download fine for movies, or if you use SortTV on Linux all images should download correctly. Images downloaded by the module on Windows are corrupted, therefore this features is now automatically disabled for Windows users. Feel free to discuss this problem with the creator of the module.
 
 Q: How do I submit code?
 A: For simple patches, I suggest you make your changes in a copy, and create a patch using the command: "diff -ur dir1 dir2 > patch", where dir1 is a directory containing the latest release of SortTV, and dir2 is your-new-version. This creates a file named "patch" containing just your changes. Send "patch" via an email or via the forum. Alternatively, if you wish you can use Git. Find repo information on the SortTV sourceforge page.
