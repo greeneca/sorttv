@@ -490,7 +490,7 @@ sub is_video_to_be_sorted {
 
 sub is_music_to_be_sorted {
 	my ($file, $filename) = @_;
-	return -f $file and not is_other($file) and matches_type($filename, @musicext);
+	return (-f $file and not is_other($file) and matches_type($filename, @musicext));
 }
 
 # checks whether this is a movie to be sorted
