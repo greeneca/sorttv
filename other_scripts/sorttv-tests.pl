@@ -295,7 +295,7 @@ sub test_sorttv {
 		print "\tCreating $to_sort/$file\n";
 		create_file("$to_sort/$file");
 		
-		my $run = "../sorttv.pl --directory-to-sort=$to_sort --tv-directory=$tv_dir --movie-directory=$movie_dir --music-directory=$music_dir --misc-dir=$misc_dir --sort-by=MOVE --treat-directories=RECURSIVELY_SORT_CONTENTS --log-file=$log_file --force-windows-compatible-filenames=TRUE $command";
+		my $run = "perl ../sorttv.pl --directory-to-sort=$to_sort --tv-directory=$tv_dir --movie-directory=$movie_dir --music-directory=$music_dir --misc-dir=$misc_dir --sort-by=MOVE --treat-directories=RECURSIVELY_SORT_CONTENTS --log-file=$log_file --force-windows-compatible-filenames=TRUE $command";
 		print "\tRunning: $run\n";
 		system $run;
 		my @results = split ';', $files{$file};
