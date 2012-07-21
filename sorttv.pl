@@ -1468,9 +1468,25 @@ sub fetchshowimages {
 		return;
 	}
 	out("std", "DOWNLOAD: downloading images for $fetchname\n");
-	my $banner = $tvdb->getSeriesBanner($fetchname);
-	my $fanart = $tvdb->getSeriesFanart($fetchname);
-	my $poster = $tvdb->getSeriesPoster($fetchname);
+
+	my ($poster, $fanart, $banner);
+	eval {
+		$SIG{ALRM} = sub {die "timed out\n"};
+		alarm 20;
+
+		$poster = $tvdb->getSeriesPoster($fetchname);
+		$fanart = $tvdb->getSeriesFanart($fetchname);
+		$banner = $tvdb->getSeriesBanner($fetchname);
+
+		alarm 0;
+		$SIG{ALRM} = sub {};
+	};
+	if($@ eq "timed out\n") {
+		out("verbose", "INFO: Timed out downloading TV images.\n");
+	} elsif($@) {
+		out("verbose", "INFO: Failed to download TV images: $@.\n");
+	}
+
 	if($dryrun) {
 		out("std", "DRYRUN: not copying images.\n");
 		return;
@@ -1504,8 +1520,24 @@ sub fetchseasonimages {
 		return;
 	}
 	out("std", "DOWNLOAD: downloading season image for $fetchname\n");
-	my $banner = $tvdb->getSeasonBanner($fetchname, $season);
-	my $bannerwide = $tvdb->getSeasonBannerWide($fetchname, $season);
+
+	my ($banner, $bannerwide);
+	eval {
+		$SIG{ALRM} = sub {die "timed out\n"};
+		alarm 20;
+
+		$banner = $tvdb->getSeasonBanner($fetchname, $season);
+		$bannerwide = $tvdb->getSeasonBannerWide($fetchname, $season);
+
+		alarm 0;
+		$SIG{ALRM} = sub {};
+	};
+	if($@ eq "timed out\n") {
+		out("verbose", "INFO: Timed out downloading TV images.\n");
+	} elsif($@) {
+		out("verbose", "INFO: Failed to download TV images: $@.\n");
+	}
+
 	if($dryrun) {
 		out("std", "DRYRUN: not copying images.\n");
 		return;
@@ -1531,13 +1563,29 @@ sub fetchepisodeimage {
 		out("std", "WARN: not downloading TV images, not supported on Windows.\n");
 		return;
 	}
+	my ($fetchname, $newshowdir, $season, $seasondir, $episode, $newfilename) = @_;
+
+	my $epimage;
+	eval {
+		$SIG{ALRM} = sub {die "timed out\n"};
+		alarm 10;
+
+		$epimage = $tvdb->getEpisodeBanner($fetchname, $season, $episode);
+
+		alarm 0;
+		$SIG{ALRM} = sub {};
+	};
+	if($@ eq "timed out\n") {
+		out("verbose", "INFO: Timed out downloading TV episode image.\n");
+	} elsif($@) {
+		out("verbose", "INFO: Failed to download TV episode image: $@.\n");
+	}
+
+	if($dryrun) {
+		out("std", "DRYRUN: not copying images.\n");
+		return;
+	}
 	eval { # ignore errors
-		my ($fetchname, $newshowdir, $season, $seasondir, $episode, $newfilename) = @_;
-		my $epimage = $tvdb->getEpisodeBanner($fetchname, $season, $episode);
-		if($dryrun) {
-			out("std", "DRYRUN: not copying images.\n");
-			return;
-		}
 		my $newimagepath = "$seasondir/$newfilename";
 		$newimagepath =~ s/(.*)(\..*)/$1.tbn/;
 		copy ("$scriptpath/.cache/$epimage", $newimagepath) if $epimage && -e "$scriptpath/.cache/$epimage";
