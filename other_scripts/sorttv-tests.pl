@@ -72,7 +72,7 @@ my $log;
 
 	test_sorttv("thetvdb image downloads (expected to fail on Windows)",
 		"--fetch-tv-images=NEW_SHOWS $standard_tvdb_renaming",
-		"$tv_dir/Pioneer One/Season 1/Pioneer One - S01E01 - Earthfall.tbn;$tv_dir/Pioneer One/folder.jpg;$tv_dir/Pioneer One/fanart.jpg;$tv_dir/Pioneer One/banner.jpg;$tv_dir/Pioneer One/season01.jpg;$tv_dir/Pioneer One/Season 1/folder.jpg",
+		"Pioneer One Season 1 Episode 1.avi"=>"$tv_dir/Pioneer One/Season 1/Pioneer One - S01E01 - Earthfall.tbn;$tv_dir/Pioneer One/folder.jpg;$tv_dir/Pioneer One/fanart.jpg;$tv_dir/Pioneer One/banner.jpg;$tv_dir/Pioneer One/season01.jpg;$tv_dir/Pioneer One/Season 1/folder.jpg",
 		);
 
 	test_sorttv("substitutions (w/tvdb)",
