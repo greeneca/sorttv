@@ -502,9 +502,9 @@ sub is_movie {
 	# conditions for it to be checked
 	if($moviedir && (is_video_to_be_sorted($file, $filename) || (-d $file and $sort_movie_dir eq "TRUE"))) {
 		# check regex
-		if($filename =~ /(.*?)\s*-?\s*\(?\[?([12][0-9]{3})\)?\]?(?:BDRip|\[Eng]|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)*.*(\.\w*)?/i
-		|| $filename =~ /(.*?)(?:[[\]{}()]|\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)+.*?()(\.\w*)?/i
-		|| $filename =~ /(.*)()(\.\w*)/i || $filename =~ /(.*)()()/i) {
+		if($filename =~ /(.*?)\s*-?\s*\(?\[?([12][0-9]{3})\)?\]?(?:BDRip|\[Eng]|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)*.*?(\.\w*$)/i
+		|| $filename =~ /(.*?)(?:[[\]{}()]|\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)+.*?()(\.\w*$)/i
+		|| $filename =~ /(.*?)()(\.\w*$)/i || $filename =~ /(.*)()()/) {
 			my $title = $1;
 			my $year = $2;
 			my $ext = $3;
