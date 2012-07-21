@@ -58,11 +58,15 @@ For example, on Linux into /home/[yourusername]/sorttv/
 
 Edit the sorttv.conf file to the settings you want (at minimum specify the location of the directories to sort from and to)
 
-Install the modules the script uses.
+Install the modules the script uses:
+
 To do so, run this command on Linux or Mac OS X:
 sudo cpan File::Copy::Recursive File::Glob LWP::Simple TVDB::API Getopt::Long Switch WWW::TheMovieDB::Search XML::Simple
-On Windows run the same command, without "sudo"
 
+On Windows run this via the command prompt:
+cpan File::Copy::Recursive File::Glob::Windows LWP::Simple TVDB::API Getopt::Long Switch WWW::TheMovieDB::Search XML::Simple
+
+When prompted, you can select the recommended options by pressing Enter (see the FAQ if you encounter problems)
 ---
 Automation
 
