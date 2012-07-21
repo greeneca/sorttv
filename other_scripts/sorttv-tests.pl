@@ -24,7 +24,7 @@ use File::Path qw(make_path);
 use File::Spec::Functions "rel2abs";
 use File::Basename;
 use File::Path;
-
+use FileHandle;
 
 my $scriptpath = dirname(rel2abs($0));
 my $test_directory = "$scriptpath/test_directory";
@@ -40,7 +40,16 @@ my $standard_renaming = "\"--rename-tv-format=[SHOW_NAME] - [EP1]\" --rename-med
 my $standard_tvdb_renaming = "\"--rename-tv-format=[SHOW_NAME] - [EP1][EP_NAME1]\" --rename-media=TRUE";
 my $movie_rename = "\"--rename-tv-format=[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YEAR1]\"";
 
+my $logfile = "$scriptpath/test-status.log";
+my $log;
+
 {
+	# initialise output
+	$log = FileHandle->new("$logfile", "a") or out("warn", "WARN: Could not open log file $logfile: $!\n");
+	out("Testing SortTV\n", "~" x 6,"\n");
+	display_time();
+	out("Operating system: $^O\n");
+
 	# here we list all the tests
 
 	test_sorttv("TV regex (no network)",
@@ -271,7 +280,7 @@ my $movie_rename = "\"--rename-tv-format=[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YE
 		"test/My Music - test.mp3"=>"$music_dir/test/My Music - test.mp3",
 		);
 
-	print "~~~\nAll tests complete:\n$passed_count tests passed\n$failed_count tests failed\n";
+	out("~~~\nAll tests complete:\n$passed_count tests passed\n$failed_count tests failed\n");
 
 	exit;
 }
@@ -286,20 +295,20 @@ my $movie_rename = "\"--rename-tv-format=[MOVIE_TITLE] [YEAR2]/[MOVIE_TITLE] [YE
 #    files starting with * indicate that the file should be a symlink
 sub test_sorttv {
 	my ($testing, $command, %files) = @_;
-	print "Testing: $testing...\n";
+	out("~~~\nTesting: $testing...\n");
 	foreach my $file (keys %files) {
 		make_paths();
 		my $mkdir = "$to_sort/".path($file);
 		make_path($mkdir);
 		
-		print "\tCreating $to_sort/$file\n";
+		out("\tCreating $to_sort/$file\n");
 		create_file("$to_sort/$file");
 		
 		my $run = "perl ../sorttv.pl --directory-to-sort=$to_sort --tv-directory=$tv_dir --movie-directory=$movie_dir --music-directory=$music_dir --misc-dir=$misc_dir --sort-by=MOVE --treat-directories=RECURSIVELY_SORT_CONTENTS --log-file=$log_file --force-windows-compatible-filenames=TRUE $command";
-		print "\tRunning: $run\n";
+		out("\tRunning: $run\n");
 		system $run;
 		my @results = split ';', $files{$file};
-		print "~~~\nTesting $testing:\n";
+		print("--\nTesting $testing:\n");
 		foreach (@results) {
 			# files starting with ! indicate that the file should NOT exist after the sort
 			my $message = "";
@@ -309,13 +318,13 @@ sub test_sorttv {
 				$message = "symlink ";
 			}
 			if($_ !~ /^[!*]/ && -f $_ || $_ =~ s/^!// && ! -f $_ || $_ =~ s/^[*]// && -l $_) {
-				print "Test PASSED: $file resulted in $_ ${message}existing\n";
+				out("Test PASSED: $file resulted in $_ ${message}existing\n");
 				$passed_count++;
 				#<STDIN>;
 			} else {
-				print "Test FAILED!: $file did not result in $_ ${message}existing\n";
+				out("Test FAILED!: $file did not result in $_ ${message}existing\n");
 				$failed_count++;
-				print "Press Enter to continue\n";
+				out("Press Enter to continue\n");
 				<STDIN>;
 			}
 		}
@@ -340,11 +349,24 @@ sub create_file {
 }
 
 sub make_paths {
-	print "\tMaking paths\n";
+	out("\tMaking paths\n");
 	rmtree($test_directory);
 	make_path($to_sort);
 	make_path($tv_dir);
 	make_path($movie_dir);
 	make_path($misc_dir);
 	make_path($music_dir);
+}
+
+sub display_time {
+	my ($second, $minute, $hour, $dayofmonth, $month, $yearoffset) = localtime();
+	my $year = 1900 + $yearoffset;
+	my $thetime = "$hour:$minute:$second, $dayofmonth-$month-$year";
+	out("$thetime\n"); 
+}
+
+sub out {
+	my (@msg) = @_;
+	print @msg;
+	print $log @msg if(defined $log);
 }
