@@ -93,6 +93,7 @@ my $tvdblanguage = "en";
 my $movielanguage = "en";
 my $tvdb;
 my $tmdb;
+my $yearmarginoferror = 1;
 my $forceeptitle = ""; # HACK for limitation in TVDB API module
 # download timeout
 $ua->timeout(20);
@@ -158,6 +159,7 @@ my @optionlist = (
 	"use-dots-instead-of-spaces|dots=s" => \$usedots,
 	"sort-by|by=s" => \$sortby,
 	"sort-only-older-than-days|age=i" => \$sortolderthandays,
+	"year-margin-of-error|yerr=i" => \$yearmarginoferror,
 	"poll-time|poll=s" =>
 		sub {
 			my $ptime = $_[1];
@@ -753,7 +755,7 @@ OPTIONS:
 	Only copy files which fall within these filesize ranges.
 	Examples for the pattern include 345MB-355MB or 1.05GB-1.15GB
 
---sort-only-older-than-days=[DAYS]
+--sort-only-older-than-days=number
 	Sort only files or directories that are older than this number of days.  
 	If not specified or zero, sort everything.
 
@@ -774,7 +776,7 @@ OPTIONS:
 	Output verbosity. Set to TRUE to show messages describing the decision making process.
 	If not specified, FALSE
 
---polling-time:{X}
+--polling-time={X}
 	Tell the script to check for new files to sort every X seconds, minutes, hours, or days
 	You could set the script to start on system startup with polling, rather than using scheduling to start the script.
 	Valid values include "2secs", "2days", "1min", "3hrs", "30s" etc.
@@ -834,6 +836,12 @@ OPTIONS:
 --season-double-digits=[TRUE|FALSE]
 	Season format padded to double digits (eg "Season 01" rather than "Season 1")
 	If not specified, FALSE
+
+--year-margin-of-error=number
+	The margin of error for year matches.
+	This applies to movies and TV episodes (for sorting purposes).
+	For example, if a year is specified in the filename it can be off by this many years and still be considered the same movie.
+	If not specified, 1
 
 --match-type=[NORMAL|LIBERAL]
 	Match type. 
@@ -1376,7 +1384,7 @@ sub dir_matching_show_name {
 			if($year) {
 				if ($show =~ /.*(?:\.|\s|-|\(|\[)*\(?((?:20|19)\d{2})(?:\)|\])?$/){
 					my $diryear = $1;
-					if($year == $diryear) {
+					if(abs($diryear - $year) <= $yearmarginoferror) {
 						return $show;
 					}
 				}
@@ -1983,10 +1991,10 @@ sub match_and_sort_movie {
 				out("warn", "WARN: could not extract year from online movie information\n");
 			}
 			if($year && $released_year) {
-				if($released_year eq $year) {
+				if(abs($released_year - $year) <= $yearmarginoferror) {
 					out("verbose", "INFO: Year also matches\n");
 					my $img = ${$$mlistref{$movie}}{"images"}{"image"};
-					sort_movie($file, $movietitle, $year, $ext, $img);
+					sort_movie($file, $movietitle, $released_year, $ext, $img);
 					return "TRUE";
 				} else {
 					out("warn", "WARN: Found matching movie '$movietitle', but does not match year in filename (named $year not $released_year), skipping\n");

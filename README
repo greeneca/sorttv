@@ -248,6 +248,12 @@ OPTIONS:
 		Season format padded to double digits (eg "Season 01" rather than "Season 1")
 		If not specified, FALSE
 
+	--year-margin-of-error=number
+		The margin of error for year matches.
+		This applies to movies and TV episodes (for sorting purposes).
+		For example, if a year is specified in the filename it can be off by this many years and still be considered the same movie.
+		If not specified, 1
+
 	--match-type=[NORMAL|LIBERAL]
 		Match type. 
 		LIBERAL assumes all files are episodes and tries to extract season and episode number any way possible.

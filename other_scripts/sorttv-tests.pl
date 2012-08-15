@@ -254,6 +254,25 @@ my $log;
 		"RIP: A Remix Manifesto.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009.avi",
 		);
 
+	test_sorttv("movie sorting, with year margin of error (1)",
+		"$movie_rename  --year-margin-of-error=1 --rename-media=TRUE --fetch-movie-images=FALSE", 
+		"RIP: A Remix Manifesto 2011.avi"=>"!$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
+		"RIP: A Remix Manifesto 2010.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
+		"RIP: A Remix Manifesto 2009.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
+		"RIP: A Remix Manifesto 2008.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
+		"RIP: A Remix Manifesto 2007.avi"=>"!$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
+		);
+
+	test_sorttv("movie sorting, with year margin of error (2)",
+		"$movie_rename  --year-margin-of-error=2 --rename-media=TRUE --fetch-movie-images=FALSE", 
+		"RIP: A Remix Manifesto 2012.avi"=>"!$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
+		"RIP: A Remix Manifesto 2011.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
+		"RIP: A Remix Manifesto 2010.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
+		"RIP: A Remix Manifesto 2009.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
+		"RIP: A Remix Manifesto 2008.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
+		"RIP: A Remix Manifesto 2007.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
+		);
+
 	test_sorttv("movie renaming w/quality",
 		"\"--rename-movie-format=[MOVIE_TITLE] [YEAR2][QUALITY]\" --rename-media=TRUE --fetch-movie-images=FALSE",
 		"RIP: A Remix Manifesto DVD.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009 SD.avi",
