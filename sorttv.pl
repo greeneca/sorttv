@@ -93,7 +93,7 @@ my $tvdblanguage = "en";
 my $movielanguage = "en";
 my $tvdb;
 my $tmdb;
-my $yearmarginoferror = 1;
+my $yeartoleranceforerror = 1;
 my $forceeptitle = ""; # HACK for limitation in TVDB API module
 # download timeout
 $ua->timeout(20);
@@ -159,7 +159,7 @@ my @optionlist = (
 	"use-dots-instead-of-spaces|dots=s" => \$usedots,
 	"sort-by|by=s" => \$sortby,
 	"sort-only-older-than-days|age=i" => \$sortolderthandays,
-	"year-margin-of-error|yerr=i" => \$yearmarginoferror,
+	"year-tolerance-for-error|yerr=i" => \$yeartoleranceforerror,
 	"poll-time|poll=s" =>
 		sub {
 			my $ptime = $_[1];
@@ -837,8 +837,8 @@ OPTIONS:
 	Season format padded to double digits (eg "Season 01" rather than "Season 1")
 	If not specified, FALSE
 
---year-margin-of-error=number
-	The margin of error for year matches.
+--year-tolerance-for-error=number
+	The tolerated variance for year matches.
 	This applies to movies and TV episodes (for sorting purposes).
 	For example, if a year is specified in the filename it can be off by this many years and still be considered the same movie.
 	If not specified, 1
@@ -1384,7 +1384,7 @@ sub dir_matching_show_name {
 			if($year) {
 				if ($show =~ /.*(?:\.|\s|-|\(|\[)*\(?((?:20|19)\d{2})(?:\)|\])?$/){
 					my $diryear = $1;
-					if(abs($diryear - $year) <= $yearmarginoferror) {
+					if(abs($diryear - $year) <= $yeartoleranceforerror) {
 						return $show;
 					}
 				}
@@ -1991,7 +1991,7 @@ sub match_and_sort_movie {
 				out("warn", "WARN: could not extract year from online movie information\n");
 			}
 			if($year && $released_year) {
-				if(abs($released_year - $year) <= $yearmarginoferror) {
+				if(abs($released_year - $year) <= $yeartoleranceforerror) {
 					out("verbose", "INFO: Year also matches\n");
 					my $img = ${$$mlistref{$movie}}{"images"}{"image"};
 					sort_movie($file, $movietitle, $released_year, $ext, $img);

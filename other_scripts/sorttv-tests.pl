@@ -255,7 +255,7 @@ my $log;
 		);
 
 	test_sorttv("movie sorting, with year margin of error (1)",
-		"$movie_rename  --year-margin-of-error=1 --rename-media=TRUE --fetch-movie-images=FALSE", 
+		"$movie_rename  --year-tolerance-for-error=1 --rename-media=TRUE --fetch-movie-images=FALSE", 
 		"RIP: A Remix Manifesto 2011.avi"=>"!$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
 		"RIP: A Remix Manifesto 2010.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
 		"RIP: A Remix Manifesto 2009.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
@@ -264,7 +264,7 @@ my $log;
 		);
 
 	test_sorttv("movie sorting, with year margin of error (2)",
-		"$movie_rename  --year-margin-of-error=2 --rename-media=TRUE --fetch-movie-images=FALSE", 
+		"$movie_rename  --year-tolerance-for-error=2 --rename-media=TRUE --fetch-movie-images=FALSE", 
 		"RIP: A Remix Manifesto 2012.avi"=>"!$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
 		"RIP: A Remix Manifesto 2011.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
 		"RIP: A Remix Manifesto 2010.avi"=>"$movie_dir/RiP!- A Remix Manifesto 2009/RiP!- A Remix Manifesto (2009).avi",
