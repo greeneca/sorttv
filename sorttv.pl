@@ -1802,7 +1802,7 @@ sub move_an_ep {
 			$newfilename =~ s/\[QUALITY]/$quality/ig;
 		}
 		# keep any "part 1" etc on the end of the new filename
-		if(filename($file) =~ /(\b(?:part|cd|disk)\s?\.?\d+)\b/) {
+		if(filename($file) =~ /(\b(?:part|cd|disk)\s?\.?\d+)\b/i) {
 			$newfilename .= " $1";
 		}
 		$newfilename .= $ext;
@@ -2037,7 +2037,12 @@ sub sort_movie {
 		if($location =~ /\[QUALITY]/i) {
 			my $quality = extract_quality($file);
 			$location =~ s/\[QUALITY]/$quality/ig;
-		}		
+		}
+		# keep any "part 1" etc on the end of the new filename
+		if(filename($file) =~ /(\b(?:part|cd|disk)\s?\.?\d+)\b/i) {
+			$location .= " $1";
+		}
+
 		$location =~ s/$/$ext/ig;
 
 		$dest = escape_myfilename($location);
