@@ -343,7 +343,7 @@ my ($showname, $year, $series, $episode, $pureshowname) = "";
 }
 
 # notifies the user if a newer version is available
-# gets the version of the latest release from gitweb, and compares that to the local version
+# gets the version of the latest release from sourceforge, and compares that to the local version
 sub check_for_updates {
 	my ($version, $localmaj, $localmin, $currentversion, $currentmaj, $currentmin);
 	if(open (VER, "$scriptpath/.sorttv.version")) {
@@ -352,7 +352,7 @@ sub check_for_updates {
 	if($version =~ /(\d+).(\d+)/) {
 		($localmaj, $localmin) = ($1, $2);
 	}
-	$currentversion = get "http://sorttv.git.sourceforge.net/git/gitweb.cgi?p=sorttv/sorttv;a=blob_plain;f=.sorttv.version;hb=HEAD";
+	$currentversion = get "http://sourceforge.net/p/sorttv/code/ci/master/tree/.sorttv.version?format=raw";
 	return unless $currentversion;
 	if($currentversion =~ /(\d+).(\d+)/) {
 		($currentmaj, $currentmin) = ($1, $2);
