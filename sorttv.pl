@@ -43,6 +43,7 @@
 
 use warnings;
 use strict;
+use utf8;
 
 use File::Copy::Recursive "dirmove", "dircopy";
 use File::Copy;
@@ -51,7 +52,8 @@ use LWP::Simple qw($ua getstore get is_success);
 use File::Spec::Functions "rel2abs";
 use File::Basename;
 use TVDB::API;
-use WWW::TheMovieDB::Search;
+use WWW::TheMovieDB;
+use JSON::Parse 'parse_json';
 use XML::Simple;
 use File::Find;
 use File::Path qw(make_path);
@@ -308,8 +310,10 @@ my ($showname, $year, $series, $episode, $pureshowname) = "";
 
 	# if uses moviedb, set it up
 	if($moviedir) {
-		$tmdb = new WWW::TheMovieDB::Search('e3df0ef251745a7833d9e9114fc9b0c1');
-		$tmdb->lang($movielanguage);
+		$tmdb = new WWW::TheMovieDB({
+			'key'=>'e3df0ef251745a7833d9e9114fc9b0c1',
+			'language'=>$movielanguage
+		});
 	}
 
 	$log = FileHandle->new("$logfile", "a") or out("warn", "WARN: Could not open log file $logfile: $!\n") if $logfile;
@@ -1944,78 +1948,94 @@ sub match_and_sort_movie {
 	my ($title, $year, $ext, $file) = @_;
 
 	out("verbose",  "INFO: Looking for movie matching $title using the movie db\n");
-	my $result = $tmdb->Movie_search(remdot($title));
-	$result = Encode::encode("utf8", $result);
-	unless($result) {
-		return "FALSE";
-	}
-	# remove small images, left with the biggest ones
-	$result =~ s/.*<image.*size="(?:w\d+|thumb|small|cover|mid|poster)".*//ig;
-	# if the title doesn't end in a number, then add a new number to make sure the hash index is unique
-	my $i = 0;
-	do{
-		$i++;
-	} while($result =~ s/<name>(.*\D)<\/name>/<name>$1$i<\/name>/i);
-
-	# convert to hash ref structure
-	my $ref = XMLin($result);
+	
 	# all is well and we have at least one match
-	unless($ref && $ref->{"opensearch:totalResults"}) {
+	my $parsed_json_result;
+	eval {
+		$parsed_json_result = parse_json ($tmdb->Search::movie({
+			'query' => $title
+		}));
+	};
+	if($@) {
+		out("warn",  "WARN: Encountered error converting JSON.\n");
 		return "FALSE";
 	}
-	my @arr;
-	my $mlistref;
-	$mlistref = $ref->{movies}{movie} if($ref->{'opensearch:totalResults'} > 1);
-	$mlistref = $ref->{movies} if($ref->{'opensearch:totalResults'} == 1);
-
-	@arr = keys %{$mlistref};
-	out("verbose",  "INFO: $ref->{'opensearch:totalResults'} movies are similar to $title, checking if they are close enough matches...\n");
-	out("warn", "WARN: Movie matches with the exact same name and ending in a number have been ignored, sorry this is a known limitation\n") if($ref->{'opensearch:totalResults'} != scalar @arr);
-	MOVIE: foreach my $movie (@arr) {
-		my $altname = ${$$mlistref{$movie}}{"alternative_name"};
-		my $orgname = ${$$mlistref{$movie}}{"original_name"};
-		my $released = ${$$mlistref{$movie}}{"released"};
-		out("verbose",  "INFO: Comparing to $altname,$orgname\n");
-
-		if(fixtitle($movie) eq fixtitle($title)
-		|| (defined $altname && scalar $altname && fixtitle(${$$mlistref{$movie}}{"alternative_name"}) eq fixtitle($title))
-		|| (defined $orgname && scalar $orgname && fixtitle(${$$mlistref{$movie}}{"original_name"}) eq fixtitle($title))) {
-			out("verbose",  "INFO: Title matches\n");
-			# choose title to use
-			my $movietitle = defined $orgname ? $orgname : defined $altname ? $altname : $movie;
-			# remove any slashes from the title
- 			$movietitle = cleanup_filename($movietitle);
-			my $released_year;
-			if($released =~ /(\d{4})-\d{2}-\d{2}/) {
-				$released_year = $1;
-			} else {
-				out("warn", "WARN: could not extract year from online movie information\n");
-			}
-			if($year && $released_year) {
-				if(abs($released_year - $year) <= $yeartoleranceforerror) {
-					out("verbose", "INFO: Year also matches\n");
-					my $img = ${$$mlistref{$movie}}{"images"}{"image"};
-					sort_movie($file, $movietitle, $released_year, $ext, $img);
-					return "TRUE";
-				} else {
-					out("warn", "WARN: Found matching movie '$movietitle', but does not match year in filename (named $year not $released_year), skipping\n");
-					next MOVIE;
-				}
-			} else {
-				# choose year to use
-				my $yeartouse = $year ? $year : $released_year ? $released_year : "";
-				my $img = ${$$mlistref{$movie}}{"images"}{"image"};
-				sort_movie($file, $movietitle, $yeartouse, $ext, $img);
-				return "TRUE";
-			}
-		} 
+	my $total_pages = $parsed_json_result->{total_pages};
+	my $total_results = $parsed_json_result->{total_results};
+	unless($total_results > 0) {
+		out("verbose",  "INFO: No movies matching $title found\n");
+		return "FALSE";
 	}
+	out("verbose",  "INFO: $total_results movies are similar to $title, checking if they are close enough matches...\n");
+
+	my $page_index;
+	PAGE: for($page_index = 1; $page_index <= $total_pages; $page_index++) {
+		out("verbose",  "INFO: Fetching page $page_index of results\n");
+		eval {
+			$parsed_json_result = parse_json ($tmdb->Search::movie({
+				'query' => $title,
+				'page' => $page_index
+			}));
+		};
+		if($@) {
+			out("warn",  "WARN: Encountered error converting JSON.\n");
+		}
+		my $result_index = 0;
+		my $movie;
+		MOVIE: while($movie = $$parsed_json_result{"results"}[$result_index]) {
+			$result_index++;
+			out("verbose",  "Processing results page $page_index #$result_index: ...\n");
+			
+			my $baseimgURL = "http://d3gtl9l2a4fn1j.cloudfront.net/t/p/original/";
+			my $moviename = $$movie{"title"} if $$movie{"title"};
+			my $altname = $$movie{"alternative_name"} if $$movie{"alternative_name"};
+			my $orgname = $$movie{"original_name"} if $$movie{"original_name"};
+			my $released = $$movie{"release_date"} if $$movie{"release_date"};
+			my $poster = $baseimgURL . $$movie{"poster_path"} if $$movie{"poster_path"};
+			my $backdrop = $baseimgURL . $$movie{"backdrop_path"} if $$movie{"backdrop_path"};
+			{
+				no warnings 'uninitialized';
+				out("verbose",  "INFO: Comparing $title to $moviename,$altname,$orgname\n");
+			}
+			if(fixtitle($moviename) eq fixtitle($title)
+			|| (defined $altname && scalar $altname && fixtitle($altname) eq fixtitle($title))
+			|| (defined $orgname && scalar $orgname && fixtitle($orgname) eq fixtitle($title))) {
+				out("verbose",  "INFO: Title matches\n");
+				# choose title to use
+				my $movietitle = defined $orgname ? $orgname : defined $altname ? $altname : $moviename;
+				# remove any slashes from the title
+				$movietitle = cleanup_filename($movietitle);
+				my $released_year;
+				if($released =~ /(\d{4})-\d{2}-\d{2}/) {
+					$released_year = $1;
+				} else {
+					out("warn", "WARN: could not extract year from online movie information\n");
+				}
+				if($year && $released_year) {
+					if(abs($released_year - $year) <= $yeartoleranceforerror) {
+						out("verbose", "INFO: Year also matches\n");
+						sort_movie($file, $movietitle, $released_year, $ext, $poster, $backdrop);
+						return "TRUE";
+					} else {
+						out("warn", "WARN: Found matching movie '$movietitle', but does not match year in filename (named $year not $released_year), skipping\n");
+						next MOVIE;
+					}
+				} else {
+					# choose year to use
+					my $yeartouse = $year ? $year : $released_year ? $released_year : "";
+					sort_movie($file, $movietitle, $yeartouse, $ext, $poster, $backdrop);
+					return "TRUE";
+				}
+			} 
+		}
+	}		
+
 	# at this point, we didn't find a match
 	return "FALSE";
 }
 
 sub sort_movie {
-	my ($file, $title, $year, $ext, $img) = @_;
+	my ($file, $title, $year, $ext, $posterimg, $backimg) = @_;
 	my ($mdir, $dest);
 	my $sendxbmcnotifications = $xbmcoldwebserver;
 	$sendxbmcnotifications or $sendxbmcnotifications = $xbmcaddress;
@@ -2076,19 +2096,15 @@ sub sort_movie {
 				$fanartfilename = $mdir.filename_without_ext($dest)."-fanart.jpg";
 			}
 			out("std", "INFO: Fetching movie images\n");
-			foreach my $image (keys %$img) {
-				my $status;
+				my ($status1, $status2);
 				eval {
-				if($$img{$image}{type} eq "poster") {
-					out("std", "INFO: Downloading poster for $title\n");
-					for(my $tries=0;$tries<2&&!LWP::Simple::is_success($status);$tries++) {
-						$status = LWP::Simple::getstore( $$img{$image}{url}, $posterfilename ) || (out("warn", "Failed to download image\n") && next);
-					}
-				} elsif($$img{$image}{type} eq "backdrop") {
-					out("std", "INFO: Downloading backdrop for $title\n");
-					for(my $tries=0;$tries<2&&!LWP::Simple::is_success($status);$tries++) {
-						$status = LWP::Simple::getstore( $$img{$image}{url}, $fanartfilename ) || (out("warn", "Failed to download image\n") && next);
-					}
+				out("std", "INFO: Downloading poster for $title (from $posterimg to $posterfilename)\n");
+				for(my $tries=0;$tries<2&&!LWP::Simple::is_success($status1);$tries++) {
+					$status1 = LWP::Simple::getstore( $posterimg, $posterfilename ) || (out("warn", "Failed to download image\n") && next);
+				}
+				out("std", "INFO: Downloading backdrop for $title (from $backimg to $fanartfilename)\n");
+				for(my $tries=0;$tries<2&&!LWP::Simple::is_success($status2);$tries++) {
+					$status2 = LWP::Simple::getstore( $backimg, $fanartfilename ) || (out("warn", "Failed to download image\n") && next);
 				}
 				my $ok = 1;
 				if (-e $posterfilename) {
@@ -2102,7 +2118,7 @@ sub sort_movie {
 					}
 				}
 				};
-			}
+# 			}
 		}
 		if($sendxbmcnotifications) {
 			my $new = "$title $year";
