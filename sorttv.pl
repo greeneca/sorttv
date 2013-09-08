@@ -370,6 +370,7 @@ sub update_xbmc {
 	if($sock) {
 		print $sock '{"id":1,"method":"VideoLibrary.Scan","params":[],"jsonrpc":"2.0"}';
 		print $sock '{"jsonrpc": "2.0", "method": "VideoLibrary.ScanForContent", "id": 1}\n';
+		print $sock "{\"jsonrpc\":\"2.0\",\"method\":\"GUI.ShowNotification\",\"params\":{\"title\":\"New Shows Available to Watch\",\"message\":\"$new\",\"image\":\"\"},\"displaytime\":10000,\"id\":1}\n";
 		close($sock);
 	} else {
 		out("warn", "WARN: Could not connect to xbmc server: $!\n");
