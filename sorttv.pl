@@ -2007,10 +2007,10 @@ sub match_and_sort_movie {
 				# remove any slashes from the title
 				$movietitle = cleanup_filename($movietitle);
 				my $released_year;
-				if($released =~ /(\d{4})-\d{2}-\d{2}/) {
+				if($released && $released =~ /(\d{4})-\d{2}-\d{2}/) {
 					$released_year = $1;
 				} else {
-					out("warn", "WARN: could not extract year from online movie information\n");
+					out("warn", "WARN: could not extract year from online movie informaton ($movietitle)\n");
 				}
 				if($year && $released_year) {
 					if(abs($released_year - $year) <= $yeartoleranceforerror) {
