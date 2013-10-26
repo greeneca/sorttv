@@ -509,8 +509,8 @@ sub is_movie {
 	# conditions for it to be checked
 	if($moviedir && (is_video_to_be_sorted($file, $filename) || (-d $file and $sort_movie_dir eq "TRUE"))) {
 		# check regex
-		if($filename =~ /(.*?)\s*-?\s*\(?\[?([12][0-9]{3})\)?\]?(?:BDRip|\[Eng]|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)*.*?(\.\w*$)/i
-		|| $filename =~ /(.*?)(?:[[\]{}()]|\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)+.*?()(\.\w*$)/i
+		if($filename =~ /(.*?)\s*-?\.?\s*\(?\[?([12][0-9]{3})\)?\]?(?:BDRip|\[Eng]|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)*.*?(\.\w*$)/i
+		|| $filename =~ /(.*?)\.?(?:[[\]{}()]|\[Eng]|BDRip|DVDRip|DVD|Bluray|XVID|DIVX|720|1080|HQ|x264|R5)+.*?()(\.\w*$)/i
 		|| $filename =~ /(.*?)()(\.\w*$)/i || $filename =~ /(.*)()()/) {
 			my $title = $1;
 			my $year = $2;
@@ -561,8 +561,7 @@ sub is_tv_episode {
 			}
 			if($pureshowname ne "") {
 				if($tvdir !~ /^KEEP_IN_SAME_DIRECTORIES/) {
-					move_episode($pureshowname, $showname, $series, $episode, $year, $file);
-					return 1;
+					return move_episode($pureshowname, $showname, $series, $episode, $year, $file);
 				} else {
 					rename_episode($pureshowname, $series, $episode, $file);
 					return 1;
@@ -587,8 +586,7 @@ sub is_tv_episode {
 					$series = sprintf("%02d", $series);
 				}
 				if($tvdir !~ /^KEEP_IN_SAME_DIRECTORIES/) {
-					move_episode($pureshowname, $showname, $series, $episode, $year, $file);
-					return 1;
+					return move_episode($pureshowname, $showname, $series, $episode, $year, $file);
 				} else {
 					rename_episode($pureshowname, $series, $episode, $file);
 					return 1;
@@ -1375,7 +1373,7 @@ sub rename_episode {
 	out("verbose", "INFO: trying to rename $pureshowname season $series episode $episode\n");
 	# test if it matches a simple version, or a substituted version of the file to move
 	move_an_ep($file, path($file), path($file), $series, $episode);
-	return 0;
+	return 1;
 }
 
 sub dir_matching_show_name {
@@ -1467,12 +1465,12 @@ sub move_episode {
 		if($season) {
 			out("verbose", "INFO: found a matching season directory:\n\t$season\n");
 			move_an_ep($file, $season, $show, $series, $episode);
-			return 0;
+			return 1;
 		}
 	} else {
 		out("verbose", "SKIP: Show directory does not exist: " . $tvdir . escape_myfilename(resolve_show_name($pureshowname))."\n");
-		return 0;
 	}
+	return 0;
 }
 
 sub fetchshowimages {
@@ -1954,7 +1952,7 @@ sub match_and_sort_movie {
 	my $parsed_json_result;
 	eval {
 		$parsed_json_result = parse_json ($tmdb->Search::movie({
-			'query' => $title
+			'query' => fixpurename($title)
 		}));
 	};
 	if($@) {
@@ -1974,7 +1972,7 @@ sub match_and_sort_movie {
 		out("verbose",  "INFO: Fetching page $page_index of results\n");
 		eval {
 			$parsed_json_result = parse_json ($tmdb->Search::movie({
-				'query' => $title,
+				'query' => fixpurename($title),
 				'page' => $page_index
 			}));
 		};
