@@ -22,6 +22,7 @@
 # TechLife - xbmc forum
 # frozenesper - xbmc forum
 # deranjer - xbmc forum
+# iamwudu - xbmc forum
 #
 # Please goto the xbmc forum to discuss SortTV:
 # http://forum.xbmc.org/showthread.php?t=75949
