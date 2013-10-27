@@ -61,10 +61,15 @@ Edit the sorttv.conf file to the settings you want (at minimum specify the locat
 Install the modules the script uses:
 
 To do so, run this command on Linux or Mac OS X:
-sudo cpan File::Copy::Recursive File::Glob LWP::Simple TVDB::API Getopt::Long Switch WWW::TheMovieDB JSON::Parse XML::Simple
+	sudo cpan File::Copy::Recursive File::Glob LWP::Simple TVDB::API Getopt::Long Switch WWW::TheMovieDB JSON::Parse XML::Simple
+
+To install on FreeBSD, run the above, then:
+	cd /usr/local/lib/perl5/site_perl/5.12.4/WWW
+	wget http://cpansearch.perl.org/src/PJOBSON/WWW-TheMovieDB-0.03/lib/WWW/TheMovieDB.pm
+	cpan JSON::Any JSON::Parse
 
 On Windows run this via the command prompt:
-cpan File::Copy::Recursive File::Glob::Windows LWP::Simple TVDB::API Getopt::Long Switch WWW::TheMovieDB JSON::Parse XML::Simple
+	cpan File::Copy::Recursive File::Glob::Windows LWP::Simple TVDB::API Getopt::Long Switch WWW::TheMovieDB JSON::Parse XML::Simple
 
 When prompted, you can select the recommended options by pressing Enter (see the FAQ if you encounter problems)
 ---
