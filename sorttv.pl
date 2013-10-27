@@ -1304,6 +1304,11 @@ sub extract_archives {
 			out("std", "SKIP: parts are still downloading: $arfile\n");
 			next;
 		}
+		if(filename($arfile) =~ /\b.*\.part\d+\.rar$/i && filename($arfile) !~ /\b.*\.part0*1\.rar$/i) {
+			out("std", "SKIP: part file: $arfile\n");
+			next;
+		}
+
 		unless (mkdir($dest)) {
 			out("warn", "WARN: could not create directory: $dest ($!), extracting to $sortd\n");
 			$dest = $sortd;
